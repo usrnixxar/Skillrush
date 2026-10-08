@@ -97,7 +97,7 @@ export class Character extends Phaser.Physics.Arcade.Sprite {
     if (!this.visible || this.alpha <= 0) this.setVisible(true).setAlpha(1);
     this.groundShadow.setPosition(this.x, GAME_CONFIG.WORLD.FLOOR_Y + 2);
     this.groundShadow.setVisible(body.blocked.down && this.characterState !== 'FALLING');
-    this.anims.timeScale = Math.min(1.35, Math.max(1, this.runSpeed / GAME_CONFIG.PLAYER.BASE_SPEED));
+    this.anims.timeScale = Math.min(1.15, Math.max(1, this.runSpeed / GAME_CONFIG.PLAYER.BASE_SPEED));
 
     if (this.characterState === 'RUNNING') {
       this.setVelocityX(this.runSpeed);

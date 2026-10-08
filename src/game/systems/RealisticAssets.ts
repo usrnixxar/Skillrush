@@ -73,9 +73,9 @@ export function createRealisticTextures(scene: Phaser.Scene) {
     }
     texture.refresh();
   };
-  // Run sheet: 192x256 cells. Fixed source scale avoids gait-size flicker.
-  for (let i=0;i<8;i++) frame('real_run',`explorer_run_${i}`,
-    [(i%4)*192,Math.floor(i/4)*256,192,256],[10,4,120,164]);
+  // Stabilized optical-flow atlas: 24 normalized cells, six columns.
+  for (let i=0;i<24;i++) frame('real_run',`explorer_run_${i}`,
+    [(i%6)*140,Math.floor(i/6)*180,140,180],[0,0,140,180]);
   // Keep a guaranteed visible pose available for low-memory/slow decoders.
   frame('real_explorer', 'explorer_fallback', [0,0,420,540], [10,4,120,164]);
   // Jump poses have different silhouettes; preserve anatomical scale rather than stretching.
