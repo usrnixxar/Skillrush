@@ -167,6 +167,7 @@ export const HUD: React.FC<HUDProps> = ({
             return (
               <span
                 key={index}
+                style={{ maxWidth: `calc((100vw - 110px) / ${activeWord.word.length})` }}
                 className={`w-7 h-9 sm:w-9 sm:h-11 md:w-10 md:h-12 flex items-center justify-center text-lg sm:text-xl md:text-2xl font-mono-game uppercase rounded-lg border tracking-wider transition-all duration-100 ${charColor} ${bgTile}`}
               >
                 {char}

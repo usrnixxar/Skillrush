@@ -39,7 +39,8 @@ export class MainGameScene extends Phaser.Scene {
   private coinsCount = 0;
   private comboStreak = 0;
   private maxCombo = 0;
-  private gameStartTime = 0;
+  private elapsedMs = 0;
+  private wordScore = 0;
   private statsThrottleTimer = 0;
 
   // Target Gate tracking
@@ -75,7 +76,10 @@ export class MainGameScene extends Phaser.Scene {
     this.maxCombo = 0;
     this.isWordClearedForCurrentPlatform = false;
     this.activeTargetGate = null;
-    this.gameStartTime = performance.now();
+    this.elapsedMs = 0;
+    this.wordScore = 0;
+    this.statsThrottleTimer = 0;
+    this.bgLayers = [];
 
     // 1. Systems setup
     this.wordManager = new WordManager();
@@ -115,6 +119,7 @@ export class MainGameScene extends Phaser.Scene {
 
     // Ready to start running
     this.startRunning();
+    this.game.events.emit("skillrush-ready", this);
   }
 
   private createParallaxBackgrounds() {
@@ -123,44 +128,48 @@ export class MainGameScene extends Phaser.Scene {
 
     // Layer 1: Sky (fixed distant)
     const sky = this.add.tileSprite(w / 2, h / 2, w, h, 'bg_sky');
-    sky.setScrollFactor(GAME_CONFIG.PARALLAX.SKY);
+    sky.setScrollFactor(0);
     sky.setDepth(0);
     this.bgLayers.push(sky);
 
     // Layer 2: Mountains
     const mountains = this.add.tileSprite(w / 2, h / 2, w, h, 'bg_mountains');
-    mountains.setScrollFactor(GAME_CONFIG.PARALLAX.MOUNTAINS);
+    mountains.setScrollFactor(0);
     mountains.setDepth(2);
     this.bgLayers.push(mountains);
 
     // Layer 3: Ancient Temple Ruins
     const temples = this.add.tileSprite(w / 2, h / 2, w, h, 'bg_temple');
-    temples.setScrollFactor(GAME_CONFIG.PARALLAX.TEMPLES);
+    temples.setScrollFactor(0);
     temples.setDepth(4);
     this.bgLayers.push(temples);
 
     // Layer 4: Waterfalls
     const waterfalls = this.add.tileSprite(w / 2, h / 2, w, h, 'bg_waterfalls');
-    waterfalls.setScrollFactor(GAME_CONFIG.PARALLAX.WATERFALLS);
+    waterfalls.setScrollFactor(0);
     waterfalls.setDepth(6);
     this.bgLayers.push(waterfalls);
 
     // Layer 5: Mid Jungle Canopy
     const midJungle = this.add.tileSprite(w / 2, h / 2, w, h, 'bg_mid_jungle');
-    midJungle.setScrollFactor(GAME_CONFIG.PARALLAX.MID_JUNGLE);
+    midJungle.setScrollFactor(0);
     midJungle.setDepth(9);
+    midJungle.setAlpha(0.6);
     this.bgLayers.push(midJungle);
 
     // Layer 6: Foreground Jungle Vines (zooms in front of camera)
     this.foregroundLayer = this.add.tileSprite(w / 2, h / 2, w, h, 'bg_foreground_jungle');
-    this.foregroundLayer.setScrollFactor(GAME_CONFIG.PARALLAX.FOREGROUND_VINES);
+    this.foregroundLayer.setScrollFactor(0);
     this.foregroundLayer.setDepth(50);
+    // Keep the explorer and obstacle silhouettes clear beneath the vines.
+    this.foregroundLayer.setAlpha(0.16);
   }
 
   private setupSinglePhysicsColliders() {
     // 1. Single platform ground collider
     this.physics.add.collider(this.character, this.platformGroup, () => {
-      if (this.character.getState() === 'JUMPING') {
+      const body = this.character.body as Phaser.Physics.Arcade.Body;
+      if (body.blocked.down && this.character.getState() === 'JUMPING') {
         this.character.onLanded();
         this.atmosphereSystem.spawnDustPuff(this.character.x, this.character.y + 60, 5);
 
@@ -196,9 +205,15 @@ export class MainGameScene extends Phaser.Scene {
   }
 
   private setupKeyboardInput() {
-    this.input.keyboard?.on('keydown', (event: KeyboardEvent) => {
-      if (!this.isGameActive || this.isGameOver) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (!this.isGameActive || this.isGameOver || event.repeat || event.ctrlKey || event.metaKey || event.altKey) return;
+      const target = event.target;
+      if (target instanceof HTMLElement && (target.matches('input, textarea') || target.isContentEditable)) return;
       this.handleTypingInput(event.key);
+    };
+    this.input.keyboard?.on('keydown', onKey);
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      this.input.keyboard?.off('keydown', onKey);
     });
   }
 
@@ -234,7 +249,7 @@ export class MainGameScene extends Phaser.Scene {
       this.maxCombo = this.comboStreak;
     }
     const comboBonus = Math.min(500, this.comboStreak * 50);
-    this.score += 200 + comboBonus;
+    this.wordScore += 200 + comboBonus;
 
     // Collapse the active gate into stone debris!
     if (this.activeTargetGate) {
@@ -317,10 +332,11 @@ export class MainGameScene extends Phaser.Scene {
     this.foregroundLayer.tilePositionX = camScrollX * GAME_CONFIG.PARALLAX.FOREGROUND_VINES;
 
     if (this.isGameOver) return;
+    this.elapsedMs += delta;
 
     // 3. Dynamic speed scaling based on WPM
     const currentWPM = this.wordManager.getSmoothedWPM();
-    const dynamicSpeed = GAME_CONFIG.PLAYER.BASE_SPEED + Math.min(100, (currentWPM - 20) * 1.4);
+    const dynamicSpeed = GAME_CONFIG.PLAYER.BASE_SPEED + Math.min(100, Math.max(0, (currentWPM - 25) * 1.4));
     this.character.setSpeed(dynamicSpeed);
 
     // 4. Update character movement & footstep particles
@@ -336,7 +352,7 @@ export class MainGameScene extends Phaser.Scene {
     if (activePlatform) {
       // If gate has been opened and character is near edge -> TRIGGER JUMP!
       if (this.isWordClearedForCurrentPlatform) {
-        if (JumpPhysics.isAtTakeoffPoint(this.character.x, activePlatform.rightX)) {
+        if (this.character.getState() === 'RUNNING' && JumpPhysics.isAtTakeoffPoint(this.character.x, activePlatform.rightX)) {
           this.character.performJump();
           this.atmosphereSystem.spawnDustPuff(this.character.x, this.character.y + 60, 6);
           this.isWordClearedForCurrentPlatform = false; // Reset for next platform
@@ -352,7 +368,7 @@ export class MainGameScene extends Phaser.Scene {
 
     // 8. Distance score increments
     const currentDistance = Math.max(0, Math.round((this.character.x - this.startX) / 10));
-    this.score = currentDistance * 2 + this.coinsCount * 100 + (this.wordManager.getStats().totalWordsCompleted * 200);
+    this.score = currentDistance * 2 + this.coinsCount * 100 + this.wordScore;
 
     // 9. Throttle stats dispatch to React UI (~10Hz)
     this.statsThrottleTimer += delta;
@@ -383,10 +399,10 @@ export class MainGameScene extends Phaser.Scene {
   private compileStats(): GameStats {
     const wmStats = this.wordManager.getStats();
     const distanceMeters = Math.max(0, Math.round((this.character.x - this.startX) / 10));
-    const elapsedSeconds = Math.max(1, Math.round((performance.now() - this.gameStartTime) / 1000));
+    const elapsedSeconds = Math.max(1, Math.round(this.elapsedMs / 1000));
 
     return {
-      score: this.score,
+      score: distanceMeters * 2 + this.coinsCount * 100 + this.wordScore,
       distance: distanceMeters,
       currentWPM: wmStats.smoothedWPM,
       averageWPM: wmStats.smoothedWPM,
@@ -402,19 +418,29 @@ export class MainGameScene extends Phaser.Scene {
     };
   }
 
+  public publishState() {
+    this.updateActiveWordUI(false);
+    this.callbacks.onStatsUpdate(this.compileStats());
+  }
+
   public pauseGame() {
+    if (!this.isGameActive || this.isGameOver) return;
     this.isGameActive = false;
-    this.physics.pause();
-    this.character.anims.pause();
+    this.wordManager.pause();
+    audioManager.stopMusic();
+    this.scene.pause();
   }
 
   public resumeGame() {
+    if (this.isGameOver || this.isGameActive) return;
+    this.wordManager.resume();
     this.isGameActive = true;
-    this.physics.resume();
-    this.character.anims.resume();
+    this.scene.resume();
+    audioManager.startMusic();
   }
 
   public restartGame() {
+    this.scene.resume();
     this.scene.restart();
   }
 }

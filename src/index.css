@@ -137,3 +137,16 @@
   background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.15) 50%, transparent 100%);
   animation: shimmerAnim 3s infinite linear;
 }
+
+button { cursor: pointer; }
+button:focus-visible, input:focus-visible { outline: 2px solid #fbbf24; outline-offset: 4px; }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
+}
+
+@media (orientation: landscape) and (max-height: 500px) {
+  .skillrush-keypad { padding: 3px 8px; gap: 3px; }
+  .skillrush-keypad button.h-11 { height: 26px; font-size: 14px; }
+}
+
+@media (pointer: coarse) { .skillrush-touch-toggle { display: flex; } }

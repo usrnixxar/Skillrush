@@ -14,17 +14,18 @@ const KEYBOARD_ROWS = [
 
 export const MobileKeyboard: React.FC<MobileKeyboardProps> = ({ onKeyPress, isActive }) => {
   const inputRef = useRef<HTMLInputElement>(null);
-  const [showVirtualKeyboard, setShowVirtualKeyboard] = useState(false);
+  const [showVirtualKeyboard, setShowVirtualKeyboard] = useState(() => window.matchMedia('(pointer: coarse)').matches);
 
   // Auto-focus the invisible mobile input to bring up system keyboard if virtual is off
   useEffect(() => {
-    if (isActive && !showVirtualKeyboard && inputRef.current) {
+    if (isActive && !showVirtualKeyboard && window.matchMedia('(pointer: coarse)').matches && inputRef.current) {
       inputRef.current.focus();
     }
   }, [isActive, showVirtualKeyboard]);
 
   // Handle hidden input text entry
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!isActive) return;
     const val = e.target.value;
     if (val.length > 0) {
       const char = val[val.length - 1];
@@ -35,7 +36,8 @@ export const MobileKeyboard: React.FC<MobileKeyboardProps> = ({ onKeyPress, isAc
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Backspace') {
+    e.stopPropagation();
+    if (isActive && e.key === 'Backspace') {
       onKeyPress('Backspace');
     }
   };
@@ -53,11 +55,12 @@ export const MobileKeyboard: React.FC<MobileKeyboardProps> = ({ onKeyPress, isAc
         onChange={handleInputChange}
         onKeyDown={handleKeyDown}
         className="opacity-0 absolute -top-96 left-0 pointer-events-none"
-        aria-hidden="true"
+        aria-label="Type the target word"
+        tabIndex={-1}
       />
 
       {/* Touch Screen Virtual Keyboard Toggle Button (visible on mobile screens) */}
-      <div className="md:hidden absolute bottom-2 right-2 z-40">
+      {!showVirtualKeyboard && isActive && <div className="skillrush-touch-toggle md:hidden absolute bottom-2 right-2 z-40">
         <button
           onClick={() => {
             setShowVirtualKeyboard(prev => !prev);
@@ -70,17 +73,18 @@ export const MobileKeyboard: React.FC<MobileKeyboardProps> = ({ onKeyPress, isAc
           {showVirtualKeyboard ? <EyeOff className="w-4 h-4" /> : <KeyboardIcon className="w-4 h-4" />}
           <span>{showVirtualKeyboard ? 'Hide Pad' : 'Touch Keys'}</span>
         </button>
-      </div>
+      </div>}
 
       {/* Floating Onscreen Touch Keyboard Overlay for Mobile Devices */}
-      {showVirtualKeyboard && (
-        <div className="md:hidden fixed inset-x-0 bottom-0 z-40 bg-stone-950/95 border-t-2 border-amber-600/60 p-2 pb-4 backdrop-blur-xl shadow-2xl flex flex-col gap-1.5 select-none animate-in slide-in-from-bottom duration-200">
+      {showVirtualKeyboard && isActive && (
+        <div className="skillrush-keypad shrink-0 w-full z-40 bg-stone-950/95 border-t-2 border-amber-600/60 p-2 pb-4 backdrop-blur-xl shadow-2xl flex flex-col gap-1.5 select-none animate-in slide-in-from-bottom duration-200">
+          <button aria-label="Use device keyboard" className="self-end text-xs text-amber-200 px-2" onClick={() => setShowVirtualKeyboard(false)}>Use device keyboard</button>
           {KEYBOARD_ROWS.map((row, rIdx) => (
             <div key={rIdx} className="flex justify-center gap-1">
               {row.map(key => (
                 <button
                   key={key}
-                  onClick={() => onKeyPress(key)}
+                  onClick={() => isActive && onKeyPress(key)}
                   className="w-8 sm:w-10 h-11 rounded-lg bg-stone-800 text-amber-100 font-bold text-lg active:bg-amber-600 active:text-stone-950 border border-stone-700 shadow-md transition-colors"
                 >
                   {key}
@@ -90,7 +94,7 @@ export const MobileKeyboard: React.FC<MobileKeyboardProps> = ({ onKeyPress, isAc
               {/* Backspace button on bottom row */}
               {rIdx === 2 && (
                 <button
-                  onClick={() => onKeyPress('Backspace')}
+                  onClick={() => isActive && onKeyPress('Backspace')}
                   className="px-3 h-11 rounded-lg bg-rose-950 text-rose-300 font-bold border border-rose-800 shadow-md active:bg-rose-700 active:text-white flex items-center justify-center"
                   aria-label="Backspace"
                 >

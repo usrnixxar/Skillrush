@@ -109,7 +109,8 @@ export class Platform extends Phaser.GameObjects.Container {
 
       const tileSprite = scene.add.sprite(tileX, 0, textureKey);
       tileSprite.setOrigin(0, 0);
-      tileSprite.setDisplaySize(tileWidth, tileHeight);
+      const visibleWidth = Math.min(tileWidth, this.length - tileX);
+      tileSprite.setCrop(0, 0, visibleWidth, tileHeight);
 
       // Flip edge tile on the right side
       if (i === numTiles - 1) {
@@ -135,6 +136,7 @@ export class Platform extends Phaser.GameObjects.Container {
       const sprite = scene.add.sprite(i * bridgeWidth, -25, 'rope_bridge');
       sprite.setOrigin(0, 0);
       sprite.setDisplaySize(bridgeWidth, bridgeHeight);
+      sprite.setCrop(0, 0, Math.min(bridgeWidth, this.length - i * bridgeWidth), bridgeHeight);
       this.add(sprite);
     }
   }

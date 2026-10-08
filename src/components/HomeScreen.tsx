@@ -130,10 +130,10 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
 
         {/* Title */}
         <h1 className="text-4xl sm:text-6xl md:text-7xl font-black font-decor tracking-wider text-amber-400 uppercase text-glow-gold">
-          SKILLENCE
+          SKILLRUSH
         </h1>
-        <div className="text-2xl sm:text-4xl md:text-5xl font-black font-ancient tracking-widest text-stone-200 uppercase mt-[-4px] md:mt-[-8px]">
-          TYPE RUNNER
+        <div className="text-lg sm:text-2xl md:text-3xl font-black font-ancient tracking-widest text-stone-200 uppercase mt-[-4px] md:mt-[-8px]">
+          TEMPLE TYPING ADVENTURE
         </div>
 
         {/* Tagline */}
@@ -213,9 +213,9 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
           © 2026 <strong className="text-amber-400">Skillence Academy</strong>. All rights reserved.
         </div>
         <div className="flex items-center gap-4 text-stone-400">
-          <span>Engine: Phaser 3 + React</span>
+          <span>Type the word. Open the gate.</span>
           <span>•</span>
-          <span>Landscape 16:9 Optimized</span>
+          <span>Your next jump is automatic.</span>
         </div>
       </footer>
     </div>

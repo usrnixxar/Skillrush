@@ -35,7 +35,6 @@ export class AtmosphereSystem {
     if (!this.sunlightOverlay) return;
     this.sunlightOverlay.clear();
 
-    const width = 1280;
     const height = 720;
 
     // Angled sunbeam polygons radiating from top-left sun position

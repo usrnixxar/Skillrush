@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
 import { LeaderboardEntry } from '../types/game';
 import { leaderboardService } from '../services/leaderboardService';
 import { X, Trophy, Medal, ShieldCheck, Zap } from 'lucide-react';
@@ -11,13 +11,7 @@ interface LeaderboardModalProps {
 
 export const LeaderboardModal: React.FC<LeaderboardModalProps> = ({ isOpen, onClose }) => {
   const [tab, setTab] = useState<'daily' | 'weekly' | 'all-time'>('all-time');
-  const [entries, setEntries] = useState<LeaderboardEntry[]>([]);
-
-  useEffect(() => {
-    if (isOpen) {
-      setEntries(leaderboardService.getEntries(tab));
-    }
-  }, [isOpen, tab]);
+  const entries = useMemo<LeaderboardEntry[]>(() => isOpen ? leaderboardService.getEntries(tab) : [], [isOpen, tab]);
 
   if (!isOpen) return null;
 
@@ -45,7 +39,7 @@ export const LeaderboardModal: React.FC<LeaderboardModalProps> = ({ isOpen, onCl
             </h2>
           </div>
           <p className="text-xs text-stone-400">
-            Skillence Academy Typing Leaderboard
+            Best runs on this browser • Daily / Sunday–Saturday (IST)
           </p>
         </div>
 
@@ -116,7 +110,7 @@ export const LeaderboardModal: React.FC<LeaderboardModalProps> = ({ isOpen, onCl
                       <div className="text-sm font-bold text-stone-200 truncate flex items-center gap-1.5">
                         <span>{item.name}</span>
                         {item.isStudent && (
-                          <span title="Verified Academy Student">
+                          <span title="Academy Student">
                             <ShieldCheck className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
                           </span>
                         )}

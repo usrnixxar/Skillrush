@@ -2,6 +2,7 @@ import React, { useEffect, useRef } from 'react';
 import Phaser from 'phaser';
 import { PreloadScene } from '../game/scenes/PreloadScene';
 import { MainGameScene, SceneCallbacks } from '../game/scenes/MainGameScene';
+import { audioManager } from '../game/systems/AudioManager';
 import { GAME_CONFIG } from '../game/config/GameConfig';
 
 interface GameCanvasProps {
@@ -17,6 +18,10 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({ callbacks, isPaused, gam
   const containerRef = useRef<HTMLDivElement>(null);
   const phaserInstanceRef = useRef<Phaser.Game | null>(null);
   const mainSceneRef = useRef<MainGameScene | null>(null);
+  const callbacksRef = useRef(callbacks);
+  const pausedRef = useRef(isPaused);
+  useEffect(() => { callbacksRef.current = callbacks; }, [callbacks]);
+  useEffect(() => { pausedRef.current = isPaused; }, [isPaused]);
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -50,13 +55,12 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({ callbacks, isPaused, gam
     const game = new Phaser.Game(config);
     phaserInstanceRef.current = game;
 
-    // Listen for scene ready to wire callbacks
-    game.events.once('step', () => {
-      const scene = game.scene.getScene('MainGameScene') as MainGameScene;
-      if (scene) {
-        mainSceneRef.current = scene;
-        scene.setCallbacks(callbacks);
-      }
+    // Every create/restart announces readiness after assets and physics exist.
+    game.events.on('skillrush-ready', (scene: MainGameScene) => {
+      mainSceneRef.current = scene;
+      scene.setCallbacks(callbacksRef.current);
+      scene.publishState();
+      if (pausedRef.current) scene.pauseGame();
     });
 
     // Provide handle ref for external key input (mobile keyboard)
@@ -76,6 +80,8 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({ callbacks, isPaused, gam
     }
 
     return () => {
+      mainSceneRef.current = null;
+      audioManager.stopMusic();
       if (phaserInstanceRef.current) {
         phaserInstanceRef.current.destroy(true);
         phaserInstanceRef.current = null;
@@ -84,7 +90,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({ callbacks, isPaused, gam
         gameRef.current = null;
       }
     };
-  }, []);
+  }, [gameRef]);
 
   // Update callbacks reference if updated
   useEffect(() => {
@@ -104,11 +110,11 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({ callbacks, isPaused, gam
   }, [isPaused]);
 
   return (
-    <div className="w-full h-full flex items-center justify-center overflow-hidden bg-black">
+    <div className="w-full flex-1 min-h-0 flex items-center justify-center overflow-hidden bg-black">
       <div
         ref={containerRef}
         id="phaser-game-container"
-        className="w-full max-w-[1280px] aspect-[16/9] shadow-2xl relative"
+        className="w-full h-full shadow-2xl relative"
       />
     </div>
   );

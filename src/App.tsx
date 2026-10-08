@@ -1,10 +1,10 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, lazy, Suspense } from 'react';
 import type { GameState, GameStats, ActiveWordState, PlayerProfile, AudioSettings } from './types/game';
 import { storageService } from './services/storageService';
 import { leaderboardService } from './services/leaderboardService';
 import { audioManager } from './game/systems/AudioManager';
 import { HomeScreen } from './components/HomeScreen';
-import { GameCanvas } from './components/GameCanvas';
+const GameCanvas = lazy(() => import('./components/GameCanvas').then(module => ({ default: module.GameCanvas })));
 import { HUD } from './components/HUD';
 import { MobileKeyboard } from './components/MobileKeyboard';
 import { LoginModal } from './components/LoginModal';
@@ -64,17 +64,17 @@ export function App() {
   // Apply initial audio settings
   useEffect(() => {
     audioManager.updateSettings(audioSettings);
-  }, []);
+  }, [audioSettings]);
 
   // Global browser shortcut blocker for space and tab during game
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (gameState === 'PLAYING') {
-        if (e.key === ' ' || e.key === 'Tab') {
+        if (e.key === ' ' && e.target === document.body) {
           e.preventDefault();
         }
         if (e.key === 'Escape') {
-          handlePause();
+          setGameState('PAUSED');
         }
       }
     };
@@ -106,11 +106,14 @@ export function App() {
     handleUpdateAudioSettings({ isMuted: !audioSettings.isMuted });
   };
 
+  const tutorialStartsRun = useRef(false);
+
   // State Transition Handlers
   const handleStartGame = () => {
     // Check if first-time player tutorial needed
     const hasViewedTutorial = localStorage.getItem('skillence_tutorial_viewed');
     if (!hasViewedTutorial) {
+      tutorialStartsRun.current = true;
       localStorage.setItem('skillence_tutorial_viewed', 'true');
       setIsHowToPlayOpen(true);
       return;
@@ -157,6 +160,7 @@ export function App() {
   };
 
   const handleGameOver = useCallback((finalStats: GameStats) => {
+    setStats(finalStats);
     setGameState('GAMEOVER');
     audioManager.stopMusic();
 
@@ -207,7 +211,7 @@ export function App() {
 
       {/* 2. In-Game View (Canvas + HUD + Mobile Keyboard) */}
       {gameState !== 'MENU' && (
-        <div className="relative w-full h-screen flex flex-col items-center justify-center bg-black overflow-hidden">
+        <div className="relative w-full h-dvh flex flex-col items-center justify-center bg-black overflow-hidden">
           {/* HUD Overlay */}
           <HUD
             stats={stats}
@@ -219,6 +223,7 @@ export function App() {
           />
 
           {/* Phaser 3 16:9 Canvas */}
+          <Suspense fallback={<div className="text-amber-300" role="status">Loading SkillRush…</div>}>
           <GameCanvas
             callbacks={{
               onStatsUpdate: (s) => setStats(s),
@@ -228,6 +233,8 @@ export function App() {
             isPaused={gameState === 'PAUSED'}
             gameRef={gameCanvasRef}
           />
+
+          </Suspense>
 
           {/* Mobile Auto-Focus & Touch Keyboard */}
           <MobileKeyboard
@@ -282,7 +289,8 @@ export function App() {
         isOpen={isHowToPlayOpen}
         onClose={() => {
           setIsHowToPlayOpen(false);
-          if (gameState === 'MENU') {
+          if (tutorialStartsRun.current && gameState === 'MENU') {
+            tutorialStartsRun.current = false;
             launchRun();
           }
         }}

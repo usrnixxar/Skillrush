@@ -91,7 +91,7 @@ export class PreloadScene extends Phaser.Scene {
     bg.fillRect(0, 0, width, height);
 
     // Title
-    const title = this.add.text(width / 2, height / 2 - 60, 'SKILLENCE TYPE RUNNER', {
+    const title = this.add.text(width / 2, height / 2 - 60, 'SKILLRUSH', {
       fontFamily: 'Cinzel, serif',
       fontSize: '34px',
       color: '#f59e0b',

@@ -18,6 +18,7 @@ export class WordManager {
   private currentTypedInput = '';
   private currentWordStartTime = 0;
   private currentWordMistakes = 0;
+  private pausedAt: number | null = null;
 
   private totalKeystrokes = 0;
   private wrongKeystrokes = 0;
@@ -45,6 +46,17 @@ export class WordManager {
     this.currentTypedInput = '';
     this.currentWordStartTime = performance.now();
     this.currentWordMistakes = 0;
+  }
+
+  public pause() {
+    if (this.pausedAt === null) this.pausedAt = performance.now();
+  }
+
+  public resume() {
+    if (this.pausedAt !== null) {
+      this.currentWordStartTime += performance.now() - this.pausedAt;
+      this.pausedAt = null;
+    }
   }
 
   public getCurrentWord(): string {
@@ -90,6 +102,9 @@ export class WordManager {
    *   'IGNORED': invalid or non-typing key
    */
   public handleKeyInput(key: string): 'CORRECT' | 'WRONG' | 'COMPLETED' | 'BACKSPACE' | 'IGNORED' {
+    // A solved gate is immutable until the next target is assigned.
+    if (this.currentTypedInput === this.currentTargetWord) return 'IGNORED';
+
     if (key === 'Backspace') {
       if (this.currentTypedInput.length > 0) {
         this.currentTypedInput = this.currentTypedInput.slice(0, -1);

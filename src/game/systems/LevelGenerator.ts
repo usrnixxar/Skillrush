@@ -40,7 +40,7 @@ export class LevelGenerator {
 
     // Platform 0: Starter road
     const starterWord = this.wordManager.getCurrentWord();
-    const starterLength = 850;
+    const starterLength = GAME_CONFIG.PLAYER.START_X + this.wordManager.calculateRoadLength(starterWord, GAME_CONFIG.PLAYER.BASE_SPEED);
     this.generatePlatform(this.nextStartX, starterLength, starterWord, false);
 
     // Generate upcoming 3 platforms ahead
@@ -103,7 +103,7 @@ export class LevelGenerator {
     this.platformCounter++;
 
     // Safe gap between previous platform and this new one
-    const gap = JumpPhysics.getSafeGapWidth(playerSpeed);
+    const gap = JumpPhysics.getSafeGapWidth(GAME_CONFIG.PLAYER.BASE_SPEED);
     const startX = this.nextStartX + gap;
 
     // Pick target word for this specific platform
