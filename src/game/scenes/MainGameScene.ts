@@ -7,6 +7,7 @@ import { WordManager } from '../systems/WordManager';
 import { AtmosphereSystem } from '../systems/AtmosphereSystem';
 import { JumpPhysics } from '../systems/JumpPhysics';
 import { audioManager } from '../systems/AudioManager';
+import { Coin } from '../objects/Coin';
 import { GameStats, ActiveWordState } from '../../types/game';
 
 export interface SceneCallbacks {
@@ -20,6 +21,11 @@ export class MainGameScene extends Phaser.Scene {
   private levelGenerator!: LevelGenerator;
   private wordManager!: WordManager;
   private atmosphereSystem!: AtmosphereSystem;
+
+  // Single static physics groups — created ONCE to prevent collider leaks
+  private platformGroup!: Phaser.Physics.Arcade.StaticGroup;
+  private gateGroup!: Phaser.Physics.Arcade.StaticGroup;
+  private coinGroup!: Phaser.Physics.Arcade.StaticGroup;
 
   // Background Parallax Layers
   private bgLayers: Phaser.GameObjects.TileSprite[] = [];
@@ -36,9 +42,8 @@ export class MainGameScene extends Phaser.Scene {
   private gameStartTime = 0;
   private statsThrottleTimer = 0;
 
-  // Active platform and word
-  private currentPlatformIndex = 0;
-  private nextGateToClear: TempleGate | null = null;
+  // Target Gate tracking
+  private activeTargetGate: TempleGate | null = null;
   private isWordClearedForCurrentPlatform = false;
 
   private callbacks: SceneCallbacks = {
@@ -68,6 +73,8 @@ export class MainGameScene extends Phaser.Scene {
     this.coinsCount = 0;
     this.comboStreak = 0;
     this.maxCombo = 0;
+    this.isWordClearedForCurrentPlatform = false;
+    this.activeTargetGate = null;
     this.gameStartTime = performance.now();
 
     // 1. Systems setup
@@ -78,27 +85,35 @@ export class MainGameScene extends Phaser.Scene {
     // 2. Parallax Background Layers
     this.createParallaxBackgrounds();
 
-    // 3. Atmosphere & Lighting
+    // 3. Atmosphere & Volumetric Lighting
     this.atmosphereSystem.create();
 
-    // 4. Character
+    // 4. Create Single Static Physics Groups
+    this.platformGroup = this.physics.add.staticGroup();
+    this.gateGroup = this.physics.add.staticGroup();
+    this.coinGroup = this.physics.add.staticGroup();
+
+    // 5. Generate World Platforms
+    this.levelGenerator.init(this.platformGroup, this.gateGroup, this.coinGroup);
+
+    // 6. Character setup
     this.character = new Character(this, GAME_CONFIG.PLAYER.START_X, GAME_CONFIG.WORLD.FLOOR_Y - 90);
     this.startX = this.character.x;
 
-    // 5. Generate World Platforms
-    this.levelGenerator.init();
+    // 7. Setup Physics Colliders ONCE (no duplicate leaks)
+    this.setupSinglePhysicsColliders();
 
-    // 6. Camera Follow (keeps player at 28% from the left edge)
+    // 8. Sync initial target word with first gate ahead
+    this.syncActiveGateAhead();
+
+    // 9. Camera Follow (keeps player at 28% from the left edge)
     this.cameras.main.startFollow(this.character, false, 0.1, 0, -260, 0);
     this.cameras.main.setBounds(0, 0, Number.MAX_SAFE_INTEGER, GAME_CONFIG.CANVAS_HEIGHT);
 
-    // 7. Physics Colliders
-    this.setupPhysicsColliders();
-
-    // 8. Keyboard Input Listeners
+    // 10. Keyboard Input Listeners
     this.setupKeyboardInput();
 
-    // Ready to start
+    // Ready to start running
     this.startRunning();
   }
 
@@ -142,33 +157,42 @@ export class MainGameScene extends Phaser.Scene {
     this.foregroundLayer.setDepth(50);
   }
 
-  private setupPhysicsColliders() {
-    // Ground collider: platforms zones vs character
-    const platforms = this.levelGenerator.getPlatforms();
-    platforms.forEach(p => {
-      this.physics.add.collider(this.character, p.staticCollider, () => {
-        if (this.character.getState() === 'JUMPING') {
-          this.character.onLanded();
-          this.atmosphereSystem.spawnDustPuff(this.character.x, this.character.y + 60, 5);
-        }
-      });
+  private setupSinglePhysicsColliders() {
+    // 1. Single platform ground collider
+    this.physics.add.collider(this.character, this.platformGroup, () => {
+      if (this.character.getState() === 'JUMPING') {
+        this.character.onLanded();
+        this.atmosphereSystem.spawnDustPuff(this.character.x, this.character.y + 60, 5);
 
-      // Gate collision zone
-      if (p.gate) {
-        this.physics.add.overlap(this.character, p.gate.colliderZone, () => {
-          if (!p.gate?.getIsOpen()) {
-            this.handlePlayerCrashedIntoGate();
-          }
-        });
+        // When safely landing on new platform, sync to upcoming gate!
+        this.syncActiveGateAhead();
       }
-
-      // Coin collection overlap
-      p.coins.forEach(coin => {
-        this.physics.add.overlap(this.character, coin, () => {
-          this.handleCoinCollected(coin);
-        });
-      });
     });
+
+    // 2. Single closed wall overlap
+    this.physics.add.overlap(this.character, this.gateGroup, (_char, gateZone) => {
+      // Find gate associated with this zone
+      const platforms = this.levelGenerator.getPlatforms();
+      const hitPlatform = platforms.find(p => p.gate && p.gate.colliderZone === gateZone);
+      if (hitPlatform && hitPlatform.gate && !hitPlatform.gate.getIsOpen()) {
+        this.handlePlayerCrashedIntoGate();
+      }
+    });
+
+    // 3. Single coin collection overlap
+    this.physics.add.overlap(this.character, this.coinGroup, (_char, coinObj) => {
+      this.handleCoinCollected(coinObj as Coin);
+    });
+  }
+
+  private syncActiveGateAhead() {
+    const nextGate = this.levelGenerator.getNextGateAhead(this.character.x);
+    if (nextGate && nextGate !== this.activeTargetGate) {
+      this.activeTargetGate = nextGate;
+      this.wordManager.setTargetWord(nextGate.getTargetWord());
+      this.isWordClearedForCurrentPlatform = false;
+      this.updateActiveWordUI(false);
+    }
   }
 
   private setupKeyboardInput() {
@@ -212,10 +236,9 @@ export class MainGameScene extends Phaser.Scene {
     const comboBonus = Math.min(500, this.comboStreak * 50);
     this.score += 200 + comboBonus;
 
-    // Lower the active platform's gate!
-    const activeGate = this.levelGenerator.getActiveGate();
-    if (activeGate) {
-      activeGate.openGate((x, y) => {
+    // Collapse the active gate into stone debris!
+    if (this.activeTargetGate) {
+      this.activeTargetGate.collapseAndOpen((x, y) => {
         this.atmosphereSystem.spawnGateDebris(x, y);
       });
     }
@@ -233,9 +256,9 @@ export class MainGameScene extends Phaser.Scene {
     }
   }
 
-  private handleCoinCollected(coin: Phaser.Physics.Arcade.Sprite) {
+  private handleCoinCollected(coin: Coin) {
     if (this.isGameOver) return;
-    const collected = (coin as unknown as { collect: () => boolean }).collect();
+    const collected = coin.collect();
     if (collected) {
       this.coinsCount++;
       this.score += 100;
@@ -308,13 +331,10 @@ export class MainGameScene extends Phaser.Scene {
     // 5. Update procedural level platforms ahead & cleanup behind
     this.levelGenerator.update(camScrollX, dynamicSpeed);
 
-    // Attach colliders for newly generated platforms
-    this.setupPhysicsColliders();
-
     // 6. Check Jump Takeoff Threshold near platform edge!
     const activePlatform = this.levelGenerator.getActivePlatformForX(this.character.x);
     if (activePlatform) {
-      // If gate on this platform has been opened and character is near edge -> TRIGGER JUMP!
+      // If gate has been opened and character is near edge -> TRIGGER JUMP!
       if (this.isWordClearedForCurrentPlatform) {
         if (JumpPhysics.isAtTakeoffPoint(this.character.x, activePlatform.rightX)) {
           this.character.performJump();
@@ -347,9 +367,8 @@ export class MainGameScene extends Phaser.Scene {
     const typed = this.wordManager.getTypedInput();
 
     // Update active gate banner in Phaser
-    const activeGate = this.levelGenerator.getActiveGate();
-    if (activeGate) {
-      activeGate.updateWordDisplay(word, typed, isError);
+    if (this.activeTargetGate) {
+      this.activeTargetGate.updateWordDisplay(word, typed, isError);
     }
 
     // Dispatch to React HUD

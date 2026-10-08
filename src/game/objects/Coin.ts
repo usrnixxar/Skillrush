@@ -1,14 +1,12 @@
 import Phaser from 'phaser';
 
 export class Coin extends Phaser.Physics.Arcade.Sprite {
-  private baseFloatingY: number;
   private floatTween: Phaser.Tweens.Tween | null = null;
   private isCollected = false;
 
   constructor(scene: Phaser.Scene, x: number, y: number) {
     super(scene, x, y, 'coin_00');
 
-    this.baseFloatingY = y;
     scene.add.existing(this);
     scene.physics.add.existing(this, true); // Static body
 

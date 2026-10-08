@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { GameState, GameStats, ActiveWordState, PlayerProfile, AudioSettings } from './types/game';
+import type { GameState, GameStats, ActiveWordState, PlayerProfile, AudioSettings } from './types/game';
 import { storageService } from './services/storageService';
 import { leaderboardService } from './services/leaderboardService';
 import { audioManager } from './game/systems/AudioManager';
@@ -58,6 +58,9 @@ export function App() {
     restartGame: () => void;
   } | null>(null);
 
+  // Guard against duplicate score submission
+  const hasSubmittedScoreRef = useRef(false);
+
   // Apply initial audio settings
   useEffect(() => {
     audioManager.updateSettings(audioSettings);
@@ -79,6 +82,18 @@ export function App() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [gameState]);
 
+  // Pause game when browser tab becomes inactive (visibilitychange)
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.hidden && gameState === 'PLAYING') {
+        setGameState('PAUSED');
+        audioManager.stopMusic();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, [gameState]);
+
   // Handle Audio Settings Updates
   const handleUpdateAudioSettings = (newSettings: Partial<AudioSettings>) => {
     const updated = { ...audioSettings, ...newSettings };
@@ -93,7 +108,20 @@ export function App() {
 
   // State Transition Handlers
   const handleStartGame = () => {
+    // Check if first-time player tutorial needed
+    const hasViewedTutorial = localStorage.getItem('skillence_tutorial_viewed');
+    if (!hasViewedTutorial) {
+      localStorage.setItem('skillence_tutorial_viewed', 'true');
+      setIsHowToPlayOpen(true);
+      return;
+    }
+
+    launchRun();
+  };
+
+  const launchRun = () => {
     audioManager.init();
+    hasSubmittedScoreRef.current = false;
     setStats(INITIAL_STATS);
     setActiveWord(INITIAL_WORD_STATE);
     setIsNewRecord(false);
@@ -113,6 +141,7 @@ export function App() {
   };
 
   const handleRestart = () => {
+    hasSubmittedScoreRef.current = false;
     setStats(INITIAL_STATS);
     setActiveWord(INITIAL_WORD_STATE);
     setIsNewRecord(false);
@@ -131,6 +160,10 @@ export function App() {
     setGameState('GAMEOVER');
     audioManager.stopMusic();
 
+    // Prevent duplicate score submissions
+    if (hasSubmittedScoreRef.current) return;
+    hasSubmittedScoreRef.current = true;
+
     const currentBestScore = profile.highScore;
     const isNewBest = finalStats.score > currentBestScore;
     setIsNewRecord(isNewBest);
@@ -143,8 +176,8 @@ export function App() {
     );
     setProfile(updatedProfile);
 
-    // Save to leaderboard if non-zero
-    if (finalStats.score > 0) {
+    // Validate and save to leaderboard
+    if (finalStats.score > 0 && finalStats.wordsCompleted > 0) {
       leaderboardService.addEntry({
         name: profile.name,
         isStudent: profile.isStudent,
@@ -247,7 +280,12 @@ export function App() {
 
       <HowToPlayModal
         isOpen={isHowToPlayOpen}
-        onClose={() => setIsHowToPlayOpen(false)}
+        onClose={() => {
+          setIsHowToPlayOpen(false);
+          if (gameState === 'MENU') {
+            launchRun();
+          }
+        }}
       />
 
       <SettingsModal

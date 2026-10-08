@@ -12,7 +12,7 @@ export class Platform extends Phaser.GameObjects.Container {
   public floorY: number;
   public platformType: PlatformType;
 
-  public staticCollider: Phaser.GameObjects.Zone;
+  public staticCollider: Phaser.GameObjects.Rectangle;
   public gate: TempleGate | null = null;
   public coins: Coin[] = [];
 
@@ -36,9 +36,18 @@ export class Platform extends Phaser.GameObjects.Container {
     // Build the visual tiles for this platform
     this.constructVisuals(scene);
 
-    // Create a precise static physics zone for character footing
-    this.staticCollider = scene.add.zone(startX + length / 2, floorY + 20, length, 40);
-    scene.physics.add.existing(this.staticCollider, true); // Static body
+    // Create a solid static physics rectangle for reliable footing
+    // Top surface aligns exactly at floorY
+    this.staticCollider = scene.add.rectangle(startX + length / 2, floorY + 16, length, 32, 0x000000, 0);
+    scene.physics.add.existing(this.staticCollider, true); // Static arcade body
+
+    const body = this.staticCollider.body as Phaser.Physics.Arcade.StaticBody;
+    if (body) {
+      body.checkCollision.down = false;
+      body.checkCollision.left = false;
+      body.checkCollision.right = false;
+      body.checkCollision.up = true; // Top-solid surface
+    }
 
     scene.add.existing(this);
   }
@@ -56,15 +65,32 @@ export class Platform extends Phaser.GameObjects.Container {
     const tileHeight = 128;
     const numTiles = Math.ceil(this.length / tileWidth);
 
-    // 1. Cliff Foundation below the roadway
+    // 1. Cliff Foundation below the roadway: realistic rocky stratified cliff
     const cliffGraphics = scene.add.graphics();
-    cliffGraphics.fillStyle(0x0a140d, 0.95);
-    cliffGraphics.fillRect(0, tileHeight - 10, this.length, 240);
-    // Dark depth lines
-    cliffGraphics.lineStyle(2, 0x050a06, 0.8);
-    for (let x = 40; x < this.length; x += 90) {
-      cliffGraphics.lineBetween(x, tileHeight - 10, x + 20, tileHeight + 200);
+    // Deep canyon bedrock
+    cliffGraphics.fillStyle(0x0a140d, 0.98);
+    cliffGraphics.fillRect(0, tileHeight - 12, this.length, 320);
+
+    // Stratified rocky layers & moss wash
+    cliffGraphics.fillStyle(0x132217, 0.85);
+    cliffGraphics.fillRect(0, tileHeight - 8, this.length, 45);
+
+    // Creeping moss & stone edge highlights
+    cliffGraphics.fillStyle(0x27402c, 0.7);
+    for (let x = 15; x < this.length; x += 60) {
+      cliffGraphics.fillRoundedRect(x, tileHeight - 10, 40, 16, 4);
     }
+
+    // Rocky vertical crevices & cliff cracks
+    cliffGraphics.lineStyle(2, 0x050a06, 0.9);
+    for (let x = 45; x < this.length; x += 85) {
+      cliffGraphics.beginPath();
+      cliffGraphics.moveTo(x, tileHeight - 10);
+      cliffGraphics.lineTo(x + 12, tileHeight + 80);
+      cliffGraphics.lineTo(x + 8, tileHeight + 220);
+      cliffGraphics.strokePath();
+    }
+
     this.add(cliffGraphics);
 
     // 2. Tiled modular stone surface
@@ -93,10 +119,10 @@ export class Platform extends Phaser.GameObjects.Container {
       this.add(tileSprite);
     }
 
-    // 3. Subtle ancient pathway shadow along top edge
+    // 3. Ancient roadway surface shadow & torchlight accents
     const shadowGraphics = scene.add.graphics();
-    shadowGraphics.fillStyle(0x000000, 0.25);
-    shadowGraphics.fillRect(0, 0, this.length, 6);
+    shadowGraphics.fillStyle(0x000000, 0.35);
+    shadowGraphics.fillRect(0, 0, this.length, 8);
     this.add(shadowGraphics);
   }
 

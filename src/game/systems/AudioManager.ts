@@ -70,15 +70,29 @@ class AudioManager {
   public startMusic() {
     if (this.isPlayingMusic) return;
     this.init();
-    if (!this.ctx) return;
+    if (!this.ctx || !this.musicGain) return;
 
     this.isPlayingMusic = true;
     this.currentStep = 0;
+
+    // Smooth fade-in
+    const now = this.ctx.currentTime;
+    this.musicGain.gain.setValueAtTime(0.001, now);
+    this.musicGain.gain.exponentialRampToValueAtTime(Math.max(0.001, this.settings.musicVolume), now + 1.2);
+
     this.scheduleMusicBeat();
   }
 
   public stopMusic() {
+    if (!this.isPlayingMusic) return;
     this.isPlayingMusic = false;
+
+    if (this.ctx && this.musicGain) {
+      const now = this.ctx.currentTime;
+      this.musicGain.gain.setValueAtTime(this.musicGain.gain.value, now);
+      this.musicGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.5);
+    }
+
     if (this.musicTimer !== null) {
       window.clearTimeout(this.musicTimer);
       this.musicTimer = null;
@@ -183,6 +197,28 @@ class AudioManager {
   }
 
   // --- SOUND EFFECTS ---
+  public playFootstep() {
+    if (!this.ctx || !this.sfxGain || this.settings.isMuted) return;
+    const now = this.ctx.currentTime;
+
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+
+    osc.type = 'triangle';
+    // Subtle low stone tap
+    osc.frequency.setValueAtTime(95 + Math.random() * 20, now);
+    osc.frequency.exponentialRampToValueAtTime(30, now + 0.04);
+
+    gain.gain.setValueAtTime(0.12, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.045);
+
+    osc.connect(gain);
+    gain.connect(this.sfxGain);
+
+    osc.start(now);
+    osc.stop(now + 0.05);
+  }
+
   public playTypeCorrect() {
     if (!this.ctx || !this.sfxGain || this.settings.isMuted) return;
     const now = this.ctx.currentTime;
@@ -191,7 +227,7 @@ class AudioManager {
     const gain = this.ctx.createGain();
 
     osc.type = 'sine';
-    // Crisp ascending click
+    // Crisp ascending typewriter-style stone tap
     osc.frequency.setValueAtTime(880, now);
     osc.frequency.exponentialRampToValueAtTime(1420, now + 0.04);
 
@@ -226,31 +262,54 @@ class AudioManager {
     osc.stop(now + 0.11);
   }
 
-  public playGateOpen() {
+  public playWallDestruction() {
     if (!this.ctx || !this.sfxGain || this.settings.isMuted) return;
     const now = this.ctx.currentTime;
 
-    // Sub rumble + stone sliding grind
+    // Sub rumble + stone shattering explosion
     const osc = this.ctx.createOscillator();
     const gain = this.ctx.createGain();
 
     osc.type = 'sawtooth';
-    osc.frequency.setValueAtTime(90, now);
-    osc.frequency.linearRampToValueAtTime(45, now + 0.5);
+    osc.frequency.setValueAtTime(120, now);
+    osc.frequency.exponentialRampToValueAtTime(35, now + 0.45);
 
-    gain.gain.setValueAtTime(0.35, now);
-    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.55);
+    gain.gain.setValueAtTime(0.42, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.5);
 
     const filter = this.ctx.createBiquadFilter();
     filter.type = 'lowpass';
-    filter.frequency.setValueAtTime(280, now);
+    filter.frequency.setValueAtTime(380, now);
 
     osc.connect(filter);
     filter.connect(gain);
     gain.connect(this.sfxGain);
 
     osc.start(now);
-    osc.stop(now + 0.56);
+    osc.stop(now + 0.52);
+
+    // Crackle noise burst for crumbling debris
+    const bufferSize = Math.floor(this.ctx.sampleRate * 0.25);
+    const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < bufferSize; i++) {
+      data[i] = (Math.random() * 2 - 1) * (1 - i / bufferSize);
+    }
+    const noise = this.ctx.createBufferSource();
+    noise.buffer = buffer;
+
+    const noiseGain = this.ctx.createGain();
+    noiseGain.gain.setValueAtTime(0.25, now);
+    noiseGain.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
+
+    noise.connect(noiseGain);
+    noiseGain.connect(this.sfxGain);
+
+    noise.start(now);
+  }
+
+  public playGateOpen() {
+    this.playWallDestruction();
   }
 
   public playJump() {

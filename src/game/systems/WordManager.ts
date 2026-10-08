@@ -40,6 +40,13 @@ export class WordManager {
     this.totalWordsCompleted = 0;
   }
 
+  public setTargetWord(word: string) {
+    this.currentTargetWord = word;
+    this.currentTypedInput = '';
+    this.currentWordStartTime = performance.now();
+    this.currentWordMistakes = 0;
+  }
+
   public getCurrentWord(): string {
     return this.currentTargetWord;
   }
@@ -120,12 +127,13 @@ export class WordManager {
 
   private recordWordCompletion() {
     const now = performance.now();
-    const durationMs = Math.max(300, now - this.currentWordStartTime);
+    const durationMs = Math.max(250, now - this.currentWordStartTime);
     const durationMinutes = durationMs / 60000;
 
     // Standard typing formula: (characters / 5) / minutes
     const standardWordCount = this.currentTargetWord.length / 5;
-    const wordWPM = Math.min(160, Math.max(10, standardWordCount / durationMinutes));
+    const rawWPM = standardWordCount / durationMinutes;
+    const wordWPM = Math.min(180, Math.max(15, rawWPM));
 
     const wordAccuracy = this.currentTargetWord.length / (this.currentTargetWord.length + this.currentWordMistakes);
 
@@ -156,18 +164,14 @@ export class WordManager {
   }
 
   /**
-   * Advances to next target word
+   * Generates a new random word suited for current smoothed WPM
    */
-  public advanceToNextWord(): string {
-    this.currentTargetWord = getRandomWord(this.smoothedWPM);
-    this.currentTypedInput = '';
-    this.currentWordStartTime = performance.now();
-    this.currentWordMistakes = 0;
-    return this.currentTargetWord;
+  public generateNextWord(): string {
+    return getRandomWord(this.smoothedWPM);
   }
 
   /**
-   * Calculates dynamic platform road length based on the prompt's required formula:
+   * Calculates dynamic platform road length based on required formula:
    * estimatedTypingSeconds = (wordLength / 5) * (60 / smoothedWPM)
    * availableTime = estimatedTypingSeconds * difficultyMultiplier + reactionBuffer
    * roadLength = playerSpeed * availableTime + requiredSafetyDistance
@@ -187,7 +191,7 @@ export class WordManager {
     const availableTime = estimatedTypingSeconds * difficultyMultiplier + reactionBuffer;
 
     // Safety distance accounts for takeoff room and platform visual borders
-    const requiredSafetyDistance = 220;
+    const requiredSafetyDistance = 240;
 
     const rawRoadLength = playerSpeed * availableTime + requiredSafetyDistance;
 

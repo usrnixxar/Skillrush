@@ -67,7 +67,11 @@ export class Character extends Phaser.Physics.Arcade.Sprite {
   public triggerCollision() {
     this.characterState = 'HIT';
     this.setVelocity(0, 0);
-    (this.body as Phaser.Physics.Arcade.Body).setAllowGravity(false);
+    const body = this.body as Phaser.Physics.Arcade.Body;
+    if (body) {
+      body.setAllowGravity(false);
+      body.setVelocity(0, 0);
+    }
     this.play('anim_character_hit', true);
     audioManager.playCollision();
   }
@@ -81,25 +85,26 @@ export class Character extends Phaser.Physics.Arcade.Sprite {
 
   public updateMovement(delta: number, onFootstepDust: (x: number, y: number) => void) {
     const body = this.body as Phaser.Physics.Arcade.Body;
+    if (!body) return;
 
     if (this.characterState === 'RUNNING') {
       this.setVelocityX(this.runSpeed);
 
-      // Footstep dust & audio interval
+      // Footstep sound & dust interval
       this.footstepTimer += delta;
-      if (this.footstepTimer > 280) {
+      if (this.footstepTimer > 250) {
         this.footstepTimer = 0;
+        audioManager.playFootstep();
         onFootstepDust(this.x - 15, this.y + 60);
       }
     } else if (this.characterState === 'JUMPING') {
       this.setVelocityX(this.runSpeed);
 
-      // Check if starting to descend
       if (body.velocity.y > 0 && this.anims.currentAnim?.key !== 'anim_character_jump') {
         this.play('anim_character_jump', true);
       }
     } else if (this.characterState === 'FALLING') {
-      this.setVelocityX(this.runSpeed * 0.4);
+      this.setVelocityX(this.runSpeed * 0.35);
     }
   }
 }
