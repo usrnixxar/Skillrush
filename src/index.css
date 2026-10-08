@@ -1,0 +1,139 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --font-ancient: 'Cinzel', serif;
+    --font-ancient-decor: 'Cinzel Decorative', cursive;
+    --font-modern: 'Outfit', sans-serif;
+    --font-mono: 'JetBrains Mono', monospace;
+  }
+
+  body {
+    font-family: var(--font-modern);
+    background-color: #080f0a;
+    color: #e5ece6;
+  }
+}
+
+.font-ancient {
+  font-family: var(--font-ancient);
+}
+
+.font-decor {
+  font-family: var(--font-ancient-decor);
+}
+
+.font-mono-game {
+  font-family: var(--font-mono);
+}
+
+/* Custom Temple Glows & Textures */
+.glow-gold {
+  box-shadow: 0 0 25px rgba(245, 158, 11, 0.45), 0 0 50px rgba(217, 119, 6, 0.25);
+}
+
+.text-glow-gold {
+  text-shadow: 0 0 15px rgba(251, 191, 36, 0.6), 0 0 30px rgba(217, 119, 6, 0.4);
+}
+
+.text-glow-emerald {
+  text-shadow: 0 0 15px rgba(52, 211, 153, 0.6), 0 0 30px rgba(16, 185, 129, 0.4);
+}
+
+.text-glow-crimson {
+  text-shadow: 0 0 15px rgba(248, 113, 113, 0.6), 0 0 30px rgba(220, 38, 38, 0.4);
+}
+
+/* Ancient Stone Frame & Relic Borders */
+.stone-panel {
+  background: linear-gradient(180deg, rgba(28, 38, 31, 0.95) 0%, rgba(14, 21, 17, 0.98) 100%);
+  border: 2px solid rgba(180, 142, 70, 0.45);
+  box-shadow: 
+    inset 0 1px 0 rgba(255, 235, 170, 0.2),
+    inset 0 0 20px rgba(0, 0, 0, 0.7),
+    0 12px 30px rgba(0, 0, 0, 0.8),
+    0 0 25px rgba(180, 142, 70, 0.15);
+  backdrop-filter: blur(12px);
+}
+
+.stone-button {
+  background: linear-gradient(180deg, #3d4a3e 0%, #222d24 60%, #151d16 100%);
+  border: 1.5px solid #a68a4e;
+  box-shadow: 
+    inset 0 1px 0 rgba(255, 255, 255, 0.25),
+    inset 0 -2px 0 rgba(0, 0, 0, 0.6),
+    0 4px 12px rgba(0, 0, 0, 0.5);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.stone-button:hover {
+  background: linear-gradient(180deg, #4f6151 0%, #2d3b30 60%, #1c261e 100%);
+  border-color: #f59e0b;
+  box-shadow: 
+    inset 0 1px 0 rgba(255, 255, 255, 0.35),
+    0 0 18px rgba(245, 158, 11, 0.4),
+    0 6px 16px rgba(0, 0, 0, 0.6);
+  transform: translateY(-2px);
+}
+
+.stone-button:active {
+  transform: translateY(1px);
+  box-shadow: 
+    inset 0 2px 4px rgba(0, 0, 0, 0.8),
+    0 2px 6px rgba(0, 0, 0, 0.4);
+}
+
+/* Gold Button for Primary CTA */
+.gold-button {
+  background: linear-gradient(180deg, #f59e0b 0%, #d97706 60%, #92400e 100%);
+  border: 1.5px solid #fef08a;
+  box-shadow: 
+    inset 0 1px 0 rgba(255, 255, 255, 0.4),
+    inset 0 -2px 0 rgba(0, 0, 0, 0.5),
+    0 6px 20px rgba(245, 158, 11, 0.4);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  color: #1e1302;
+  font-weight: 800;
+}
+
+.gold-button:hover {
+  background: linear-gradient(180deg, #fbbf24 0%, #f59e0b 60%, #b45309 100%);
+  box-shadow: 
+    inset 0 1px 0 rgba(255, 255, 255, 0.6),
+    0 0 28px rgba(245, 158, 11, 0.7),
+    0 8px 24px rgba(0, 0, 0, 0.6);
+  transform: translateY(-2px) scale(1.02);
+}
+
+.gold-button:active {
+  transform: translateY(1px) scale(0.99);
+}
+
+/* Pulsing Run Light */
+@keyframes torchFlicker {
+  0%, 100% { opacity: 0.85; filter: drop-shadow(0 0 12px rgba(245, 158, 11, 0.5)); }
+  50% { opacity: 1; filter: drop-shadow(0 0 20px rgba(251, 191, 36, 0.8)); }
+}
+
+.animate-torch {
+  animation: torchFlicker 2.5s infinite ease-in-out;
+}
+
+/* Shimmer animation for HUD badges */
+@keyframes shimmerAnim {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(200%); }
+}
+
+.shimmer-mask {
+  position: relative;
+  overflow: hidden;
+}
+
+.shimmer-mask::after {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.15) 50%, transparent 100%);
+  animation: shimmerAnim 3s infinite linear;
+}

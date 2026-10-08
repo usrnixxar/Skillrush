@@ -1,0 +1,39 @@
+{
+  "canvas": [
+    1280,
+    720
+  ],
+  "characterFrame": [
+    140,
+    180
+  ],
+  "gateFrame": [
+    192,
+    256
+  ],
+  "coinFrame": [
+    80,
+    80
+  ],
+  "recommendation": "Phaser 3; side-scrolling 2D; use alpha PNG and sequence frames at 10-14 fps",
+  "parallaxSpeeds": [
+    0,
+    0.08,
+    0.16,
+    0.27,
+    0.44,
+    0.65
+  ],
+  "animations": {
+    "run": 12,
+    "jump": 10,
+    "idle": 8,
+    "fall": 8,
+    "hit": 6,
+    "gate": 12,
+    "coin": 12,
+    "dust": 10,
+    "sparkle": 10,
+    "gate_debris": 10
+  }
+}
