@@ -28,6 +28,8 @@ export function createRealisticTextures(scene: Phaser.Scene) {
   // Run sheet: 384x512 cells, baseline 499. Fixed source scale avoids gait-size flicker.
   for (let i=0;i<8;i++) frame('real_run',`explorer_run_${i}`,
     [(i%4)*192,Math.floor(i/4)*256,192,256],[10,4,120,164]);
+  // Keep a guaranteed visible pose available for low-memory/slow decoders.
+  frame('real_explorer', 'explorer_fallback', [0,0,420,540], [10,4,120,164]);
   // Jump poses have different silhouettes; preserve anatomical scale rather than stretching.
   frame('real_jump','explorer_jump_0',[0,0,328,300],[-14,-3,168,169],
     [[0,0],[328,0],[328,265],[175,265],[150,300],[0,300]]);

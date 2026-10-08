@@ -24,6 +24,11 @@ export class Character extends Phaser.Physics.Arcade.Sprite {
     body.setCollideWorldBounds(false);
 
     this.setDepth(20);
+    // Explicitly reset render state so a recycled sprite can never remain hidden.
+    this.setVisible(true).setAlpha(1).setTint(0xffffff);
+    if (!scene.textures.exists('explorer_run_0')) {
+      this.setTexture('explorer_fallback');
+    }
     this.play('anim_character_idle');
   }
 
@@ -89,6 +94,7 @@ export class Character extends Phaser.Physics.Arcade.Sprite {
   public updateMovement(delta: number, onFootstepDust: (x: number, y: number) => void) {
     const body = this.body as Phaser.Physics.Arcade.Body;
     if (!body) return;
+    if (!this.visible || this.alpha <= 0) this.setVisible(true).setAlpha(1);
     this.groundShadow.setPosition(this.x, GAME_CONFIG.WORLD.FLOOR_Y + 2);
     this.groundShadow.setVisible(body.blocked.down && this.characterState !== 'FALLING');
     this.anims.timeScale = Math.min(1.35, Math.max(1, this.runSpeed / GAME_CONFIG.PLAYER.BASE_SPEED));
