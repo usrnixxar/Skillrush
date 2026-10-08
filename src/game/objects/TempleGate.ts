@@ -33,8 +33,10 @@ export class TempleGate extends Phaser.GameObjects.Container {
     this.add(this.rightPillar);
 
     // Main Gate Sprite
-    this.gateSprite = scene.add.sprite(0, 0, 'gate_00');
-    this.gateSprite.setDisplaySize(185, 245);
+    this.gateSprite = scene.add.sprite(0, 0, 'real_props', 'gate');
+    this.gateSprite.setDisplaySize(215, 255);
+    this.leftPillar.setVisible(false);
+    this.rightPillar.setVisible(false);
     this.add(this.gateSprite);
 
     // Solid Physics Collider Rectangle
@@ -123,13 +125,13 @@ export class TempleGate extends Phaser.GameObjects.Container {
       repeat: 3,
       onComplete: () => {
         // Play gate collapse frames
-        this.gateSprite.play('anim_gate_open');
+        // Preserve the realistic stone texture throughout the collapse.
 
         // Shatter gate downward with crumbling rotation
         this.scene.tweens.add({
           targets: this.gateSprite,
           y: '+=110',
-          scaleY: 0.2,
+          scaleY: this.gateSprite.scaleY * 0.2,
           alpha: 0,
           duration: 380,
           ease: 'Cubic.easeIn',

@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { createRealisticTextures } from '../systems/RealisticAssets';
 import { GAME_CONFIG } from '../config/GameConfig';
 
 export class PreloadScene extends Phaser.Scene {
@@ -9,35 +10,10 @@ export class PreloadScene extends Phaser.Scene {
   public preload() {
     this.createLoadingUI();
 
-    // 1. Character Spritesheets
-    this.load.spritesheet('char_run_sheet', '/assets/character/run_spritesheet.png', {
-      frameWidth: GAME_CONFIG.PLAYER.FRAME_WIDTH,
-      frameHeight: GAME_CONFIG.PLAYER.FRAME_HEIGHT,
-    });
-    this.load.spritesheet('char_jump_sheet', '/assets/character/jump_spritesheet.png', {
-      frameWidth: GAME_CONFIG.PLAYER.FRAME_WIDTH,
-      frameHeight: GAME_CONFIG.PLAYER.FRAME_HEIGHT,
-    });
-    this.load.spritesheet('char_idle_sheet', '/assets/character/idle_spritesheet.png', {
-      frameWidth: GAME_CONFIG.PLAYER.FRAME_WIDTH,
-      frameHeight: GAME_CONFIG.PLAYER.FRAME_HEIGHT,
-    });
-    this.load.spritesheet('char_fall_sheet', '/assets/character/fall_spritesheet.png', {
-      frameWidth: GAME_CONFIG.PLAYER.FRAME_WIDTH,
-      frameHeight: GAME_CONFIG.PLAYER.FRAME_HEIGHT,
-    });
-    this.load.spritesheet('char_hit_sheet', '/assets/character/hit_spritesheet.png', {
-      frameWidth: GAME_CONFIG.PLAYER.FRAME_WIDTH,
-      frameHeight: GAME_CONFIG.PLAYER.FRAME_HEIGHT,
-    });
-
-    // 2. Background Parallax Layers
-    this.load.image('bg_sky', '/assets/backgrounds/01_sky.png');
-    this.load.image('bg_mountains', '/assets/backgrounds/02_mountains.png');
-    this.load.image('bg_temple', '/assets/backgrounds/03_temple_ruins.png');
-    this.load.image('bg_waterfalls', '/assets/backgrounds/04_waterfalls.png');
-    this.load.image('bg_mid_jungle', '/assets/backgrounds/05_mid_jungle.png');
-    this.load.image('bg_foreground_jungle', '/assets/backgrounds/06_foreground_jungle.png');
+    this.load.image('real_run', '/assets/realistic-v1/run-small.webp');
+    this.load.image('real_jump', '/assets/realistic-v1/jump-small.webp');
+    this.load.image('real_jungle', '/assets/realistic-v1/jungle-small.webp');
+    this.load.image('real_props', '/assets/realistic-v1/props-small.webp');
 
     // 3. Terrain & Platforms
     this.load.image('stone_floor', '/assets/terrain/stone_floor_256x128.png');
@@ -61,23 +37,10 @@ export class PreloadScene extends Phaser.Scene {
       this.load.image(`coin_${idx}`, `/assets/collectibles/coins/coin_${idx}.png`);
     }
 
-    // 6. Effects
-    for (let i = 0; i < 10; i++) {
-      const idx = i.toString().padStart(2, '0');
-      this.load.image(`dust_${idx}`, `/assets/effects/dust_${idx}.png`);
-      this.load.image(`gate_debris_${idx}`, `/assets/effects/gate_debris_${idx}.png`);
-      this.load.image(`sparkle_${idx}`, `/assets/effects/sparkle_${idx}.png`);
-    }
-
-    // 7. UI
-    this.load.image('hud_panel', '/assets/ui/hud_panel.png');
-    this.load.image('button_play', '/assets/ui/button_play.png');
-    this.load.image('button_pause', '/assets/ui/button_pause.png');
-    this.load.image('button_restart', '/assets/ui/button_restart.png');
-    this.load.image('button_leaderboard', '/assets/ui/button_leaderboard.png');
   }
 
   public create() {
+    createRealisticTextures(this);
     this.registerAnimations();
     this.scene.start('MainGameScene');
   }
@@ -124,41 +87,12 @@ export class PreloadScene extends Phaser.Scene {
   }
 
   private registerAnimations() {
-    // 1. Character Animations
-    this.anims.create({
-      key: 'anim_character_run',
-      frames: this.anims.generateFrameNumbers('char_run_sheet', { start: 0, end: 11 }),
-      frameRate: GAME_CONFIG.ANIMATION_FPS.RUN,
-      repeat: -1,
-    });
-
-    this.anims.create({
-      key: 'anim_character_jump',
-      frames: this.anims.generateFrameNumbers('char_jump_sheet', { start: 0, end: 9 }),
-      frameRate: GAME_CONFIG.ANIMATION_FPS.JUMP,
-      repeat: 0,
-    });
-
-    this.anims.create({
-      key: 'anim_character_idle',
-      frames: this.anims.generateFrameNumbers('char_idle_sheet', { start: 0, end: 7 }),
-      frameRate: GAME_CONFIG.ANIMATION_FPS.IDLE,
-      repeat: -1,
-    });
-
-    this.anims.create({
-      key: 'anim_character_fall',
-      frames: this.anims.generateFrameNumbers('char_fall_sheet', { start: 0, end: 7 }),
-      frameRate: GAME_CONFIG.ANIMATION_FPS.FALL,
-      repeat: 0,
-    });
-
-    this.anims.create({
-      key: 'anim_character_hit',
-      frames: this.anims.generateFrameNumbers('char_hit_sheet', { start: 0, end: 5 }),
-      frameRate: GAME_CONFIG.ANIMATION_FPS.HIT,
-      repeat: 0,
-    });
+    this.anims.create({key: 'anim_character_run',
+      frames: Array.from({length:8},(_,i)=>({key:`explorer_run_${i}`})),
+      frameRate: 12, repeat: -1});
+    this.anims.create({key: 'anim_character_idle', frames:[{key:'explorer_run_1'}], frameRate:1});
+    this.anims.create({key: 'anim_character_hit', frames:[{key:'explorer_jump_3'}], frameRate:1});
+    this.anims.create({key: 'anim_character_fall', frames:[{key:'explorer_jump_2'}], frameRate:1});
 
     // 2. Temple Gate Lowering Animation
     const gateFrames = [];

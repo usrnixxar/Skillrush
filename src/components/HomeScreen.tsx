@@ -28,31 +28,8 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
     <div className="relative min-h-screen w-full flex flex-col justify-between overflow-hidden bg-[#070e09] text-stone-100 select-none">
       {/* Background Illustrated Jungle Temple Layers */}
       <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
-        {/* Layer 1: Sky */}
-        <div
-          className="absolute inset-0 bg-cover bg-center opacity-70"
-          style={{ backgroundImage: 'url(/assets/backgrounds/01_sky.png)' }}
-        />
-        {/* Layer 2: Mountains */}
-        <div
-          className="absolute inset-0 bg-cover bg-bottom opacity-85 scale-105"
-          style={{ backgroundImage: 'url(/assets/backgrounds/02_mountains.png)' }}
-        />
-        {/* Layer 3: Temple Ruins */}
-        <div
-          className="absolute inset-0 bg-cover bg-bottom opacity-90"
-          style={{ backgroundImage: 'url(/assets/backgrounds/03_temple_ruins.png)' }}
-        />
-        {/* Layer 4: Waterfalls */}
-        <div
-          className="absolute inset-0 bg-cover bg-bottom opacity-80"
-          style={{ backgroundImage: 'url(/assets/backgrounds/04_waterfalls.png)' }}
-        />
-        {/* Layer 5: Mid Jungle Canopy */}
-        <div
-          className="absolute inset-0 bg-cover bg-bottom opacity-95"
-          style={{ backgroundImage: 'url(/assets/backgrounds/05_mid_jungle.png)' }}
-        />
+        <div className="absolute inset-0 bg-cover bg-center"
+          style={{ backgroundImage: 'url(/assets/realistic-v1/jungle.webp)' }} />
         {/* Dark Vignette Overlay for Depth */}
         <div className="absolute inset-0 bg-gradient-to-t from-[#060b07] via-transparent to-[#070e09]/80" />
         <div className="absolute inset-0 bg-radial from-transparent via-black/40 to-black/80" />
@@ -119,10 +96,10 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
         {/* Animated Character Preview Running */}
         <div className="w-32 h-40 mx-auto mb-3 relative flex items-center justify-center">
           <img
-            src="/assets/character/run/run_02.png"
+            src="/assets/realistic-v1/explorer.webp"
             alt="Skillence Explorer"
-            className="w-28 h-36 object-contain filter drop-shadow-[0_10px_20px_rgba(0,0,0,0.8)] animate-bounce"
-            style={{ animationDuration: '0.8s' }}
+            className="w-28 h-36 object-contain filter drop-shadow-[0_10px_20px_rgba(0,0,0,0.8)] animate-explorer-breathe"
+            
           />
           {/* Torchlight glow beneath */}
           <div className="absolute -bottom-2 w-28 h-6 bg-amber-500/25 blur-md rounded-full" />

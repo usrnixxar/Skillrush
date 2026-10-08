@@ -1,298 +1,123 @@
 import Phaser from 'phaser';
 
+/** Small reusable particle pools and soft lighting keep the runner readable. */
 export class AtmosphereSystem {
-  private scene: Phaser.Scene;
-  private mistLayers: Phaser.GameObjects.TileSprite[] = [];
-  private ambientParticles: Phaser.GameObjects.Particles.ParticleEmitter | null = null;
-  private sunlightOverlay: Phaser.GameObjects.Graphics | null = null;
-  private vignetteOverlay: Phaser.GameObjects.Graphics | null = null;
-  private timeElapsed = 0;
+  private mist: Phaser.GameObjects.TileSprite[] = [];
+  private light!: Phaser.GameObjects.Image;
+  private dust!: Phaser.GameObjects.Particles.ParticleEmitter;
+  private debris!: Phaser.GameObjects.Particles.ParticleEmitter;
+  private sparks!: Phaser.GameObjects.Particles.ParticleEmitter;
+  private solvedLight!: Phaser.GameObjects.Rectangle;
+  private reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-  constructor(scene: Phaser.Scene) {
-    this.scene = scene;
-  }
+  constructor(private scene: Phaser.Scene) {}
 
   public create() {
-    this.createGodRays();
-    this.createMistLayers();
-    this.createAmbientDust();
-    this.createCinematicVignette();
-  }
-
-  /**
-   * Procedural volumetric God Rays / Sunlight beams
-   */
-  private createGodRays() {
-    this.sunlightOverlay = this.scene.add.graphics();
-    this.sunlightOverlay.setScrollFactor(0);
-    this.sunlightOverlay.setDepth(25); // Behind foreground vines, over ruins
-    this.sunlightOverlay.setBlendMode(Phaser.BlendModes.ADD);
-
-    this.renderGodRays(0);
-  }
-
-  private renderGodRays(offset: number) {
-    if (!this.sunlightOverlay) return;
-    this.sunlightOverlay.clear();
-
-    const height = 720;
-
-    // Angled sunbeam polygons radiating from top-left sun position
-    const beams = [
-      { startX: 100, width: 90, alpha: 0.08 + Math.sin(offset * 0.8) * 0.02 },
-      { startX: 320, width: 140, alpha: 0.12 + Math.sin(offset * 1.1 + 1) * 0.03 },
-      { startX: 620, width: 110, alpha: 0.09 + Math.sin(offset * 0.7 + 2) * 0.025 },
-      { startX: 890, width: 160, alpha: 0.11 + Math.sin(offset * 0.9 + 3) * 0.03 },
+    this.createTextures();
+    const {scene} = this;
+    this.light = scene.add.image(640,360,'soft_sunlight').setScrollFactor(0).setDepth(8).setAlpha(0.7);
+    this.mist = [
+      scene.add.tileSprite(640,495,1280,160,'soft_mist').setScrollFactor(0).setDepth(6).setAlpha(0.25),
+      scene.add.tileSprite(640,664,1280,90,'soft_mist').setScrollFactor(0).setDepth(18).setAlpha(0.15),
     ];
+    this.dust = scene.add.particles(0,0,'soft_dust',{
+      emitting:false, maxParticles:100, lifespan:{min:380,max:650},
+      speedX:{min:-42,max:12},speedY:{min:-30,max:-7},gravityY:12,
+      scale:{start:0.14,end:0.55},alpha:{start:0.24,end:0},tint:0xb9ad89,
+    }).setDepth(22);
+    this.debris = scene.add.particles(0,0,'real_props',{
+      frame:'pebble',emitting:false,maxParticles:70,lifespan:{min:500,max:850},
+      speedX:{min:-125,max:125},speedY:{min:-190,max:-55},gravityY:520,
+      scale:{start:0.22,end:0.12},rotate:{min:-180,max:180},alpha:{start:1,end:0},
+    }).setDepth(23);
+    this.sparks = scene.add.particles(0,0,'soft_glow',{
+      emitting:false,maxParticles:60,lifespan:340,speed:{min:15,max:60},
+      scale:{start:0.12,end:0},alpha:{start:0.8,end:0},tint:0xffd580,
+      blendMode:Phaser.BlendModes.ADD,
+    }).setDepth(24);
+    if (!this.reduceMotion) {
+      scene.add.particles(0,0,'soft_glow',{
+        x:{min:0,max:1280},y:{min:180,max:650},frequency:420,
+        maxParticles:24,lifespan:5000,speedX:{min:-6,max:10},speedY:{min:-7,max:-2},
+        scale:{start:0.045,end:0.015},alpha:{start:0.45,end:0},tint:0xffde9c,
+        blendMode:Phaser.BlendModes.ADD,
+      }).setScrollFactor(0).setDepth(17);
+      scene.add.particles(0,0,'jungle_leaf',{
+        x:{min:0,max:1360},y:-15,frequency:1200,maxParticles:12,lifespan:11000,
+        speedX:{min:-26,max:-8},speedY:{min:32,max:56},rotate:{min:0,max:360},
+        scale:{start:0.45,end:0.22},alpha:{start:0.65,end:0},
+      }).setScrollFactor(0).setDepth(21);
+    }
+    this.solvedLight = scene.add.rectangle(640,360,1280,720,0xf6d68c,0)
+      .setScrollFactor(0).setDepth(26);
+  }
 
-    beams.forEach(beam => {
-      this.sunlightOverlay!.fillStyle(0xffe899, beam.alpha);
-      this.sunlightOverlay!.beginPath();
-      this.sunlightOverlay!.moveTo(beam.startX, 0);
-      this.sunlightOverlay!.lineTo(beam.startX + beam.width, 0);
-      this.sunlightOverlay!.lineTo(beam.startX + beam.width + 360, height);
-      this.sunlightOverlay!.lineTo(beam.startX + 260, height);
-      this.sunlightOverlay!.closePath();
-      this.sunlightOverlay!.fillPath();
+  private createTextures() {
+    const texture = (key:string,w:number,h:number,paint:(ctx:CanvasRenderingContext2D)=>void) => {
+      if (this.scene.textures.exists(key)) return;
+      const canvas=this.scene.textures.createCanvas(key,w,h)!;
+      paint(canvas.getContext()); canvas.refresh();
+    };
+    texture('soft_dust',64,64,ctx=>{
+      const g=ctx.createRadialGradient(32,32,0,32,32,32);
+      g.addColorStop(0,'rgba(255,255,255,0.7)');g.addColorStop(0.45,'rgba(255,255,255,0.32)');g.addColorStop(1,'rgba(255,255,255,0)');
+      ctx.fillStyle=g;ctx.fillRect(0,0,64,64);
+    });
+    texture('soft_glow',32,32,ctx=>{
+      const g=ctx.createRadialGradient(16,16,0,16,16,16);
+      g.addColorStop(0,'rgba(255,255,255,1)');g.addColorStop(0.2,'rgba(255,255,255,0.65)');g.addColorStop(1,'rgba(255,255,255,0)');
+      ctx.fillStyle=g;ctx.fillRect(0,0,32,32);
+    });
+    texture('soft_mist',512,128,ctx=>{
+      for(let i=0;i<22;i++) {
+        const x=32+Math.random()*448,y=38+Math.random()*52,r=30+Math.random()*38;
+        const g=ctx.createRadialGradient(x,y,0,x,y,r);
+        g.addColorStop(0,'rgba(194,223,208,0.13)');g.addColorStop(1,'rgba(194,223,208,0)');
+        ctx.fillStyle=g;ctx.fillRect(0,0,512,128);
+      }
+    });
+    texture('soft_sunlight',1280,720,ctx=>{
+      for(let i=0;i<4;i++) {
+        ctx.save();ctx.translate(940-i*150,-130);ctx.rotate(0.49);
+        const g=ctx.createLinearGradient(-65,0,65,0);
+        g.addColorStop(0,'rgba(255,235,181,0)');g.addColorStop(0.5,'rgba(255,235,181,0.055)');g.addColorStop(1,'rgba(255,235,181,0)');
+        ctx.fillStyle=g;ctx.fillRect(-65,0,130,1100);ctx.restore();
+      }
+    });
+    texture('jungle_leaf',24,12,ctx=>{
+      const g=ctx.createLinearGradient(0,0,24,12);g.addColorStop(0,'#adc77a');g.addColorStop(1,'#30552f');
+      ctx.fillStyle=g;ctx.beginPath();ctx.moveTo(0,6);ctx.quadraticCurveTo(13,-7,24,6);ctx.quadraticCurveTo(12,17,0,6);ctx.fill();
+      ctx.strokeStyle='#5b6b38';ctx.beginPath();ctx.moveTo(2,6);ctx.lineTo(22,6);ctx.stroke();
     });
   }
 
-  /**
-   * Creates drifting canyon mist & fog layers at different z-depths
-   */
-  private createMistLayers() {
-    // We create a procedural soft gradient texture for mist
-    const mistTextureKey = 'procedural_mist_texture';
-    if (!this.scene.textures.exists(mistTextureKey)) {
-      const canvas = this.scene.textures.createCanvas(mistTextureKey, 512, 128);
-      if (canvas) {
-        const ctx = canvas.getContext();
-        const grad = ctx.createLinearGradient(0, 0, 0, 128);
-        grad.addColorStop(0, 'rgba(215, 238, 228, 0)');
-        grad.addColorStop(0.5, 'rgba(215, 238, 228, 0.28)');
-        grad.addColorStop(1, 'rgba(215, 238, 228, 0)');
-        ctx.fillStyle = grad;
-        ctx.fillRect(0, 0, 512, 128);
-        canvas.refresh();
-      }
-    }
-
-    // Deep valley mist layer
-    const valleyMist = this.scene.add.tileSprite(640, 500, 1400, 140, mistTextureKey);
-    valleyMist.setScrollFactor(0.2);
-    valleyMist.setDepth(8); // Between mountains & temple ruins
-    valleyMist.setAlpha(0.55);
-    valleyMist.setBlendMode(Phaser.BlendModes.SCREEN);
-    this.mistLayers.push(valleyMist);
-
-    // Near-ground waterfall mist
-    const groundMist = this.scene.add.tileSprite(640, 610, 1400, 110, mistTextureKey);
-    groundMist.setScrollFactor(0.6);
-    groundMist.setDepth(18); // Above platforms
-    groundMist.setAlpha(0.35);
-    groundMist.setBlendMode(Phaser.BlendModes.SCREEN);
-    this.mistLayers.push(groundMist);
+  public update(time:number,delta:number) {
+    if (this.reduceMotion) return;
+    this.mist.forEach((layer,i)=>{layer.tilePositionX+=delta*(0.009+i*0.006);});
+    this.light.setAlpha(0.65+Math.sin(time*0.0003)*0.08);
   }
-
-  /**
-   * Ambient jungle floating pollen / golden dust spores
-   */
-  private createAmbientDust() {
-    // Generate soft circular glow particle texture
-    const sporeKey = 'ambient_spore_particle';
-    if (!this.scene.textures.exists(sporeKey)) {
-      const canvas = this.scene.textures.createCanvas(sporeKey, 16, 16);
-      if (canvas) {
-        const ctx = canvas.getContext();
-        const grad = ctx.createRadialGradient(8, 8, 0, 8, 8, 8);
-        grad.addColorStop(0, 'rgba(255, 245, 180, 0.9)');
-        grad.addColorStop(0.5, 'rgba(240, 215, 120, 0.4)');
-        grad.addColorStop(1, 'rgba(240, 215, 120, 0)');
-        ctx.fillStyle = grad;
-        ctx.beginPath();
-        ctx.arc(8, 8, 8, 0, Math.PI * 2);
-        ctx.fill();
-        canvas.refresh();
-      }
-    }
-
-    this.ambientParticles = this.scene.add.particles(0, 0, sporeKey, {
-      x: { min: -100, max: 1380 },
-      y: { min: 50, max: 680 },
-      speedX: { min: -15, max: 25 },
-      speedY: { min: -12, max: 12 },
-      scale: { start: 0.8, end: 0.2 },
-      alpha: { start: 0.6, end: 0 },
-      lifespan: { min: 4000, max: 7000 },
-      frequency: 240,
-      blendMode: Phaser.BlendModes.ADD,
-    });
-    this.ambientParticles.setScrollFactor(0);
-    this.ambientParticles.setDepth(35);
+  public spawnDustPuff(x:number,y:number,count=4) {
+    this.dust.explode(this.reduceMotion?1:count,x,y);
   }
-
-  /**
-   * Cinematic temple edge vignette for immersion
-   */
-  private createCinematicVignette() {
-    this.vignetteOverlay = this.scene.add.graphics();
-    this.vignetteOverlay.setScrollFactor(0);
-    this.vignetteOverlay.setDepth(999);
-
-    const w = 1280;
-    const h = 720;
-    // Dark corner gradients
-    this.vignetteOverlay.fillStyle(0x040805, 0.45);
-    // Top subtle bar
-    this.vignetteOverlay.fillRect(0, 0, w, 28);
-    // Bottom subtle bar
-    this.vignetteOverlay.fillRect(0, h - 28, w, 28);
+  public spawnGateDebris(x:number,y:number) {
+    this.debris.explode(this.reduceMotion?6:22,x,y-45);
+    this.dust.explode(16,x,y+15);
   }
-
-  public update(time: number, delta: number) {
-    this.timeElapsed += delta * 0.001;
-
-    // Drift mist layers
-    if (this.mistLayers.length >= 2) {
-      this.mistLayers[0].tilePositionX += delta * 0.015;
-      this.mistLayers[1].tilePositionX += delta * 0.035;
-    }
-
-    // Pulse god rays
-    if (this.sunlightOverlay) {
-      this.renderGodRays(this.timeElapsed);
-    }
+  public spawnCoinCollectionFX(x:number,y:number,value='+100') {
+    this.sparks.explode(this.reduceMotion?2:5,x,y);
+    const text=this.scene.add.text(x,y-14,value,{
+      fontFamily:'Outfit, sans-serif',fontSize:'17px',color:'#ffe6a3',stroke:'#1a2418',strokeThickness:3,
+    }).setOrigin(0.5).setDepth(30);
+    this.scene.tweens.add({targets:text,y:y-48,alpha:0,duration:540,onComplete:()=>text.destroy()});
   }
-
-  /**
-   * Spawns dust puff when character runs or jumps
-   */
-  public spawnDustPuff(x: number, y: number, count = 4) {
-    for (let i = 0; i < count; i++) {
-      const dustIndex = Math.min(9, Math.floor(Math.random() * 5));
-      const key = `dust_${dustIndex.toString().padStart(2, '0')}`;
-      if (this.scene.textures.exists(key)) {
-        const sprite = this.scene.add.sprite(x + (Math.random() * 20 - 10), y + (Math.random() * 6 - 3), key);
-        sprite.setDepth(22);
-        sprite.setScale(0.85 + Math.random() * 0.3);
-        sprite.setAlpha(0.85);
-
-        this.scene.tweens.add({
-          targets: sprite,
-          x: sprite.x - (20 + Math.random() * 30),
-          y: sprite.y - (10 + Math.random() * 15),
-          alpha: 0,
-          scale: sprite.scale * 1.5,
-          duration: 350 + Math.random() * 200,
-          ease: 'Cubic.easeOut',
-          onComplete: () => sprite.destroy(),
-        });
-      }
-    }
+  public triggerImpactShake(intensity=0.008,duration=180) {
+    if (!this.reduceMotion) this.scene.cameras.main.shake(duration,Math.min(intensity,0.012));
   }
-
-  /**
-   * Spawns gate crumbling stone debris and dust shockwave
-   */
-  public spawnGateDebris(x: number, y: number) {
-    for (let i = 0; i < 12; i++) {
-      const debrisIndex = Math.floor(Math.random() * 10);
-      const key = `gate_debris_${debrisIndex.toString().padStart(2, '0')}`;
-      if (this.scene.textures.exists(key)) {
-        const sprite = this.scene.add.sprite(
-          x + (Math.random() * 120 - 60),
-          y + (Math.random() * 80 - 40),
-          key
-        );
-        sprite.setDepth(24);
-        sprite.setScale(0.9 + Math.random() * 0.5);
-
-        const targetX = sprite.x + (Math.random() * 140 - 70);
-        const targetY = sprite.y + 60 + Math.random() * 50;
-
-        this.scene.tweens.add({
-          targets: sprite,
-          x: targetX,
-          y: targetY,
-          rotation: Math.random() * 4 - 2,
-          alpha: 0,
-          duration: 500 + Math.random() * 300,
-          ease: 'Quad.easeIn',
-          onComplete: () => sprite.destroy(),
-        });
-      }
-    }
-
-    // Heavy dust burst along the ground
-    for (let i = 0; i < 8; i++) {
-      this.spawnDustPuff(x + (Math.random() * 100 - 50), y + 60, 2);
-    }
-  }
-
-  /**
-   * Spawns golden sparkles and floating popup when coin is collected
-   */
-  public spawnCoinCollectionFX(x: number, y: number, value = '+100') {
-    // 1. Sparkle sequence
-    for (let i = 0; i < 6; i++) {
-      const sparkleIdx = Math.floor(Math.random() * 10);
-      const key = `sparkle_${sparkleIdx.toString().padStart(2, '0')}`;
-      if (this.scene.textures.exists(key)) {
-        const sparkle = this.scene.add.sprite(
-          x + (Math.random() * 40 - 20),
-          y + (Math.random() * 40 - 20),
-          key
-        );
-        sparkle.setDepth(30);
-        sparkle.setScale(1.2);
-        sparkle.setBlendMode(Phaser.BlendModes.ADD);
-
-        this.scene.tweens.add({
-          targets: sparkle,
-          y: sparkle.y - 35,
-          alpha: 0,
-          scale: 1.8,
-          duration: 400,
-          onComplete: () => sparkle.destroy(),
-        });
-      }
-    }
-
-    // 2. Floating gold text popup
-    const popup = this.scene.add.text(x, y - 20, value, {
-      fontFamily: 'Outfit, sans-serif',
-      fontSize: '22px',
-      color: '#fef08a',
-      fontStyle: 'bold',
-      stroke: '#78350f',
-      strokeThickness: 4,
-    });
-    popup.setOrigin(0.5);
-    popup.setDepth(40);
-
-    this.scene.tweens.add({
-      targets: popup,
-      y: y - 65,
-      alpha: 0,
-      scale: 1.25,
-      duration: 650,
-      ease: 'Back.easeOut',
-      onComplete: () => popup.destroy(),
-    });
-  }
-
-  /**
-   * Camera shake with optional flash for impacts or typos
-   */
-  public triggerImpactShake(intensity = 0.008, duration = 180) {
-    this.scene.cameras.main.shake(duration, intensity);
-  }
-
   public triggerTypoFlash() {
-    this.scene.cameras.main.flash(120, 220, 38, 38, true);
+    // The red letter tile already marks the typo without obscuring gameplay.
   }
-
   public triggerWordSolvedFlash() {
-    this.scene.cameras.main.flash(180, 52, 211, 153, false);
+    this.solvedLight.setFillStyle(0xf6d68c,1).setAlpha(this.reduceMotion?0:0.07);
+    this.scene.tweens.add({targets:this.solvedLight,alpha:0,duration:240});
   }
 }

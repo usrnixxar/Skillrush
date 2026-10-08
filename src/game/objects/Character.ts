@@ -8,10 +8,12 @@ export class Character extends Phaser.Physics.Arcade.Sprite {
   private characterState: CharacterState = 'IDLE';
   private runSpeed: number = GAME_CONFIG.PLAYER.BASE_SPEED;
   private footstepTimer = 0;
+  private groundShadow: Phaser.GameObjects.Ellipse;
 
   constructor(scene: Phaser.Scene, x: number, y: number) {
-    super(scene, x, y, 'char_run_sheet', 0);
+    super(scene, x, y, 'explorer_run_0');
 
+    this.groundShadow = scene.add.ellipse(x, GAME_CONFIG.WORLD.FLOOR_Y + 2, 66, 10, 0x05120c, 0.32).setDepth(19);
     scene.add.existing(this);
     scene.physics.add.existing(this);
 
@@ -51,7 +53,8 @@ export class Character extends Phaser.Physics.Arcade.Sprite {
 
     this.characterState = 'JUMPING';
     this.setVelocityY(GAME_CONFIG.PLAYER.JUMP_VELOCITY_Y);
-    this.play('anim_character_jump', true);
+    this.anims.stop();
+    this.setTexture('explorer_jump_0');
     audioManager.playJump();
   }
 
@@ -86,6 +89,9 @@ export class Character extends Phaser.Physics.Arcade.Sprite {
   public updateMovement(delta: number, onFootstepDust: (x: number, y: number) => void) {
     const body = this.body as Phaser.Physics.Arcade.Body;
     if (!body) return;
+    this.groundShadow.setPosition(this.x, GAME_CONFIG.WORLD.FLOOR_Y + 2);
+    this.groundShadow.setVisible(body.blocked.down && this.characterState !== 'FALLING');
+    this.anims.timeScale = this.runSpeed / GAME_CONFIG.PLAYER.BASE_SPEED;
 
     if (this.characterState === 'RUNNING') {
       this.setVelocityX(this.runSpeed);
@@ -95,14 +101,13 @@ export class Character extends Phaser.Physics.Arcade.Sprite {
       if (this.footstepTimer > 250) {
         this.footstepTimer = 0;
         audioManager.playFootstep();
-        onFootstepDust(this.x - 15, this.y + 60);
+        onFootstepDust(this.x - 8, body.bottom - 2);
       }
     } else if (this.characterState === 'JUMPING') {
       this.setVelocityX(this.runSpeed);
 
-      if (body.velocity.y > 0 && this.anims.currentAnim?.key !== 'anim_character_jump') {
-        this.play('anim_character_jump', true);
-      }
+      const pose = body.velocity.y < -260 ? 0 : body.velocity.y < 160 ? 1 : 2;
+      this.setTexture(`explorer_jump_${pose}`);
     } else if (this.characterState === 'FALLING') {
       this.setVelocityX(this.runSpeed * 0.35);
     }

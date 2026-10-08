@@ -28,8 +28,8 @@ export class MainGameScene extends Phaser.Scene {
   private coinGroup!: Phaser.Physics.Arcade.StaticGroup;
 
   // Background Parallax Layers
-  private bgLayers: Phaser.GameObjects.TileSprite[] = [];
-  private foregroundLayer!: Phaser.GameObjects.TileSprite;
+  private bgLayers: Phaser.GameObjects.Image[] = [];
+  private junglePlants: Phaser.GameObjects.Image[] = [];
 
   // State
   private isGameActive = false;
@@ -123,46 +123,19 @@ export class MainGameScene extends Phaser.Scene {
   }
 
   private createParallaxBackgrounds() {
-    const w = 1280;
-    const h = 720;
-
-    // Layer 1: Sky (fixed distant)
-    const sky = this.add.tileSprite(w / 2, h / 2, w, h, 'bg_sky');
-    sky.setScrollFactor(0);
-    sky.setDepth(0);
-    this.bgLayers.push(sky);
-
-    // Layer 2: Mountains
-    const mountains = this.add.tileSprite(w / 2, h / 2, w, h, 'bg_mountains');
-    mountains.setScrollFactor(0);
-    mountains.setDepth(2);
-    this.bgLayers.push(mountains);
-
-    // Layer 3: Ancient Temple Ruins
-    const temples = this.add.tileSprite(w / 2, h / 2, w, h, 'bg_temple');
-    temples.setScrollFactor(0);
-    temples.setDepth(4);
-    this.bgLayers.push(temples);
-
-    // Layer 4: Waterfalls
-    const waterfalls = this.add.tileSprite(w / 2, h / 2, w, h, 'bg_waterfalls');
-    waterfalls.setScrollFactor(0);
-    waterfalls.setDepth(6);
-    this.bgLayers.push(waterfalls);
-
-    // Layer 5: Mid Jungle Canopy
-    const midJungle = this.add.tileSprite(w / 2, h / 2, w, h, 'bg_mid_jungle');
-    midJungle.setScrollFactor(0);
-    midJungle.setDepth(9);
-    midJungle.setAlpha(0.6);
-    this.bgLayers.push(midJungle);
-
-    // Layer 6: Foreground Jungle Vines (zooms in front of camera)
-    this.foregroundLayer = this.add.tileSprite(w / 2, h / 2, w, h, 'bg_foreground_jungle');
-    this.foregroundLayer.setScrollFactor(0);
-    this.foregroundLayer.setDepth(50);
-    // Keep the explorer and obstacle silhouettes clear beneath the vines.
-    this.foregroundLayer.setAlpha(0.16);
+    // Mirrored panorama pairs share identical edges for a seamless endless horizon.
+    for (let i=0;i<4;i++) {
+      const bg = this.add.image(i*1280,0,'real_jungle').setOrigin(0,0)
+        .setDisplaySize(1280,720).setScrollFactor(0).setDepth(0).setFlipX(i%2===1);
+      this.bgLayers.push(bg);
+    }
+    this.junglePlants = [];
+    for (let i=0;i<5;i++) {
+      const plant = this.add.image(i*410,590,'real_props',i%2?'fern':'palm')
+        .setOrigin(0.5,1).setDisplaySize(240+(i%2)*60,230+(i%2)*40)
+        .setScrollFactor(0).setDepth(7).setAlpha(0.78).setTint(0x92b9a1);
+      this.junglePlants.push(plant);
+    }
   }
 
   private setupSinglePhysicsColliders() {
@@ -325,11 +298,12 @@ export class MainGameScene extends Phaser.Scene {
 
     // 2. Parallax background manual scrolls
     const camScrollX = this.cameras.main.scrollX;
-    this.bgLayers.forEach((bg, idx) => {
-      const factors = [0, 0.08, 0.18, 0.28, 0.48];
-      bg.tilePositionX = camScrollX * factors[idx];
+    const panoramaShift = (camScrollX * 0.16) % 2560;
+    this.bgLayers.forEach((bg,i) => { bg.x = i*1280-panoramaShift; });
+    this.junglePlants.forEach((plant,i) => {
+      plant.x = Phaser.Math.Wrap(i*410-camScrollX*0.48,-300,1750);
+      plant.rotation = Math.sin(time*0.0007+i)*0.012;
     });
-    this.foregroundLayer.tilePositionX = camScrollX * GAME_CONFIG.PARALLAX.FOREGROUND_VINES;
 
     if (this.isGameOver) return;
     this.elapsedMs += delta;

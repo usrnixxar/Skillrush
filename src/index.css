@@ -150,3 +150,6 @@ button:focus-visible, input:focus-visible { outline: 2px solid #fbbf24; outline-
 }
 
 @media (pointer: coarse) { .skillrush-touch-toggle { display: flex; } }
+
+@keyframes explorerBreathe { 50% { transform: translateY(-3px); } }
+.animate-explorer-breathe { animation: explorerBreathe 3s ease-in-out infinite; }

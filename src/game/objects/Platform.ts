@@ -61,84 +61,24 @@ export class Platform extends Phaser.GameObjects.Container {
   }
 
   private constructTempleStone(scene: Phaser.Scene) {
-    const tileWidth = 256;
-    const tileHeight = 128;
-    const numTiles = Math.ceil(this.length / tileWidth);
-
-    // 1. Cliff Foundation below the roadway: realistic rocky stratified cliff
-    const cliffGraphics = scene.add.graphics();
-    // Deep canyon bedrock
-    cliffGraphics.fillStyle(0x0a140d, 0.98);
-    cliffGraphics.fillRect(0, tileHeight - 12, this.length, 320);
-
-    // Stratified rocky layers & moss wash
-    cliffGraphics.fillStyle(0x132217, 0.85);
-    cliffGraphics.fillRect(0, tileHeight - 8, this.length, 45);
-
-    // Creeping moss & stone edge highlights
-    cliffGraphics.fillStyle(0x27402c, 0.7);
-    for (let x = 15; x < this.length; x += 60) {
-      cliffGraphics.fillRoundedRect(x, tileHeight - 10, 40, 16, 4);
+    const face = scene.add.tileSprite(0,0,this.length,260,'real_stone_tile').setOrigin(0,0);
+    this.add(face);
+    const top = scene.add.rectangle(0,0,this.length,7,0xc7bd91,0.66).setOrigin(0,0);
+    const lip = scene.add.rectangle(0,7,this.length,10,0x112016,0.56).setOrigin(0,0);
+    this.add([top,lip]);
+    // Plants sit behind the runner; keep takeoff and landing edges readable.
+    for (let x=110;x<this.length-210;x+=310) {
+      const plant = scene.add.image(x,4,'real_props',Math.floor(x/310)%2?'palm':'fern')
+        .setOrigin(0.5,1).setDisplaySize(95,82).setAlpha(0.94);
+      this.add(plant);
+      scene.tweens.add({targets:plant,angle:{from:-1.5,to:1.5},duration:2200+x%500,
+        yoyo:true,repeat:-1,ease:'Sine.easeInOut'});
     }
-
-    // Rocky vertical crevices & cliff cracks
-    cliffGraphics.lineStyle(2, 0x050a06, 0.9);
-    for (let x = 45; x < this.length; x += 85) {
-      cliffGraphics.beginPath();
-      cliffGraphics.moveTo(x, tileHeight - 10);
-      cliffGraphics.lineTo(x + 12, tileHeight + 80);
-      cliffGraphics.lineTo(x + 8, tileHeight + 220);
-      cliffGraphics.strokePath();
-    }
-
-    this.add(cliffGraphics);
-
-    // 2. Tiled modular stone surface
-    for (let i = 0; i < numTiles; i++) {
-      const tileX = i * tileWidth;
-      let textureKey = 'stone_floor';
-
-      // Varied ancient mossy / broken floor textures
-      if (i === 0 || i === numTiles - 1) {
-        textureKey = 'stone_edge';
-      } else if (i % 3 === 1) {
-        textureKey = 'mossy_floor';
-      } else if (i % 4 === 2) {
-        textureKey = 'broken_floor';
-      }
-
-      const tileSprite = scene.add.sprite(tileX, 0, textureKey);
-      tileSprite.setOrigin(0, 0);
-      const visibleWidth = Math.min(tileWidth, this.length - tileX);
-      tileSprite.setCrop(0, 0, visibleWidth, tileHeight);
-
-      // Flip edge tile on the right side
-      if (i === numTiles - 1) {
-        tileSprite.setFlipX(true);
-      }
-
-      this.add(tileSprite);
-    }
-
-    // 3. Ancient roadway surface shadow & torchlight accents
-    const shadowGraphics = scene.add.graphics();
-    shadowGraphics.fillStyle(0x000000, 0.35);
-    shadowGraphics.fillRect(0, 0, this.length, 8);
-    this.add(shadowGraphics);
   }
 
   private constructRopeBridge(scene: Phaser.Scene) {
-    const bridgeWidth = 640;
-    const bridgeHeight = 200;
-    const numSegments = Math.ceil(this.length / bridgeWidth);
-
-    for (let i = 0; i < numSegments; i++) {
-      const sprite = scene.add.sprite(i * bridgeWidth, -25, 'rope_bridge');
-      sprite.setOrigin(0, 0);
-      sprite.setDisplaySize(bridgeWidth, bridgeHeight);
-      sprite.setCrop(0, 0, Math.min(bridgeWidth, this.length - i * bridgeWidth), bridgeHeight);
-      this.add(sprite);
-    }
+    // The same stone finish keeps every collision surface visually consistent.
+    this.constructTempleStone(scene);
   }
 
   public setGate(gate: TempleGate) {
