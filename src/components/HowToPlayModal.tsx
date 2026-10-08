@@ -29,7 +29,7 @@ export const HowToPlayModal: React.FC<HowToPlayModalProps> = ({ isOpen, onClose 
             HOW TO PLAY
           </h2>
           <p className="text-xs text-stone-400 mt-1">
-            Master the ancient typing mechanics of Skillence Type Runner
+            Master the ancient typing mechanics of SkillRush
           </p>
         </div>
 
