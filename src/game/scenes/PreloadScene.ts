@@ -89,7 +89,7 @@ export class PreloadScene extends Phaser.Scene {
   private registerAnimations() {
     this.anims.create({key: 'anim_character_run',
       frames: Array.from({length:8},(_,i)=>({key:`explorer_run_${i}`})),
-      frameRate: 12, repeat: -1});
+      frameRate: GAME_CONFIG.ANIMATION_FPS.RUN, repeat: -1});
     this.anims.create({key: 'anim_character_idle', frames:[{key:'explorer_run_1'}], frameRate:1});
     this.anims.create({key: 'anim_character_hit', frames:[{key:'explorer_jump_3'}], frameRate:1});
     this.anims.create({key: 'anim_character_fall', frames:[{key:'explorer_jump_2'}], frameRate:1});

@@ -39,8 +39,8 @@ export const GAME_CONFIG = {
   },
 
   ANIMATION_FPS: {
-    RUN: 12,
-    JUMP: 10,
+    RUN: 20,
+    JUMP: 16,
     IDLE: 8,
     FALL: 8,
     HIT: 6,
