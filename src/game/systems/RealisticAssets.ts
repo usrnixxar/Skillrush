@@ -8,7 +8,9 @@ export function createRealisticTextures(scene: Phaser.Scene) {
     if (scene.textures.exists(key)) return;
     const texture = scene.textures.createCanvas(key, 140, 180)!;
     const ctx = texture.getContext();
-    const source = scene.textures.get(sourceKey).getSourceImage() as HTMLImageElement;
+    const source = scene.textures.exists(sourceKey)
+      ? scene.textures.get(sourceKey).getSourceImage() as HTMLImageElement
+      : null;
     const [sx, sy, sw, sh] = crop;
     const [dx, dy, dw, dh] = destination;
     ctx.imageSmoothingEnabled = true;
@@ -22,10 +24,56 @@ export function createRealisticTextures(scene: Phaser.Scene) {
       });
       ctx.closePath(); ctx.clip();
     }
-    ctx.drawImage(source,sx,sy,sw,sh,dx,dy,dw,dh);
-    ctx.restore(); texture.refresh();
+    if (source && source.width > 0 && source.height > 0) {
+      ctx.drawImage(source,sx,sy,sw,sh,dx,dy,dw,dh);
+    }
+    ctx.restore();
+
+    // A canvas texture can exist even when its crop contains no character.
+    // Repair the frame itself so running/jumping animations retain the repair.
+    const hasVisiblePixels = () => {
+      const pixels = ctx.getImageData(0, 0, 140, 180).data;
+      let count = 0;
+      for (let i = 3; i < pixels.length; i += 4) {
+        if (pixels[i] > 32 && ++count >= 128) return true;
+      }
+      return false;
+    };
+    if (!hasVisiblePixels()) {
+      console.warn('Empty character frame; restoring explorer pose:', key, sourceKey);
+      ctx.clearRect(0, 0, 140, 180);
+      if (scene.textures.exists('real_explorer')) {
+        const backup = scene.textures.get('real_explorer').getSourceImage() as HTMLImageElement;
+        if (backup.width > 0 && backup.height > 0) {
+          ctx.drawImage(backup, 0, 0, backup.width, backup.height, 10, 4, 120, 164);
+        }
+      }
+      if (!hasVisiblePixels()) {
+        // Last-resort visible runner if both downloaded character images fail.
+        ctx.fillStyle = '#e4b488';
+        ctx.beginPath();
+        ctx.arc(70, 30, 14, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#b28c49';
+        ctx.fillRect(53, 46, 34, 58);
+        ctx.strokeStyle = '#e4b488';
+        ctx.lineWidth = 10;
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+        ctx.moveTo(55, 52); ctx.lineTo(35, 81); ctx.lineTo(24, 65);
+        ctx.moveTo(85, 52); ctx.lineTo(103, 76); ctx.lineTo(117, 62);
+        ctx.stroke();
+        ctx.strokeStyle = '#354f40';
+        ctx.lineWidth = 13;
+        ctx.beginPath();
+        ctx.moveTo(61, 101); ctx.lineTo(44, 131); ctx.lineTo(30, 159);
+        ctx.moveTo(79, 101); ctx.lineTo(97, 127); ctx.lineTo(108, 159);
+        ctx.stroke();
+      }
+    }
+    texture.refresh();
   };
-  // Run sheet: 384x512 cells, baseline 499. Fixed source scale avoids gait-size flicker.
+  // Run sheet: 192x256 cells. Fixed source scale avoids gait-size flicker.
   for (let i=0;i<8;i++) frame('real_run',`explorer_run_${i}`,
     [(i%4)*192,Math.floor(i/4)*256,192,256],[10,4,120,164]);
   // Keep a guaranteed visible pose available for low-memory/slow decoders.
