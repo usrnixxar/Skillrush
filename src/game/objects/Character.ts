@@ -97,15 +97,19 @@ export class Character extends Phaser.Physics.Arcade.Sprite {
     if (!this.visible || this.alpha <= 0) this.setVisible(true).setAlpha(1);
     this.groundShadow.setPosition(this.x, GAME_CONFIG.WORLD.FLOOR_Y + 2);
     this.groundShadow.setVisible(body.blocked.down && this.characterState !== 'FALLING');
-    this.anims.timeScale = Math.min(1.15, Math.max(1, this.runSpeed / GAME_CONFIG.PLAYER.BASE_SPEED));
+    const targetCadence = Math.min(1.15, Math.max(1, this.runSpeed / GAME_CONFIG.PLAYER.BASE_SPEED));
+    // Ease cadence changes over 120ms instead of snapping when WPM changes.
+    this.anims.timeScale += (targetCadence - this.anims.timeScale) * (1 - Math.exp(-delta / 120));
 
     if (this.characterState === 'RUNNING') {
       this.setVelocityX(this.runSpeed);
 
       // Footstep sound & dust interval
       this.footstepTimer += delta;
-      if (this.footstepTimer > 250) {
-        this.footstepTimer = 0;
+      // Two steps per 48-frame, 60 FPS cycle.
+      const stepInterval = 400 / this.anims.timeScale;
+      if (this.footstepTimer > stepInterval) {
+        this.footstepTimer %= stepInterval;
         audioManager.playFootstep();
         onFootstepDust(this.x - 8, body.bottom - 2);
       }

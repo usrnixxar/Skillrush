@@ -10,7 +10,7 @@ export class PreloadScene extends Phaser.Scene {
   public preload() {
     this.createLoadingUI();
 
-    this.load.image('real_run', '/assets/realistic-v1/run-flow-v1.webp');
+    this.load.image('real_run', '/assets/realistic-v1/run-reference-48-v1.webp');
     // Single-pose fallback keeps the player visible if a frame atlas is delayed
     // or a browser has trouble decoding an animated WebP texture.
     this.load.image('real_explorer', '/assets/realistic-v1/explorer.webp');
@@ -91,7 +91,7 @@ export class PreloadScene extends Phaser.Scene {
 
   private registerAnimations() {
     this.anims.create({key: 'anim_character_run',
-      frames: Array.from({length:24},(_,i)=>({key:`explorer_run_${i}`})),
+      frames: Array.from({length:48},(_,i)=>({key:`explorer_run_${i}`})),
       frameRate: GAME_CONFIG.ANIMATION_FPS.RUN, repeat: -1});
     this.anims.create({key: 'anim_character_idle', frames:[{key:'explorer_run_1'}], frameRate:1});
     this.anims.create({key: 'anim_character_hit', frames:[{key:'explorer_jump_3'}], frameRate:1});
