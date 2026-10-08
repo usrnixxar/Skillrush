@@ -10,7 +10,7 @@ export class PreloadScene extends Phaser.Scene {
   public preload() {
     this.createLoadingUI();
 
-    this.load.image('real_run', '/assets/realistic-v1/run-small.webp');
+    this.load.image('real_run', '/assets/realistic-v1/run-small.webp?v=ec46cc5e');
     // Single-pose fallback keeps the player visible if a frame atlas is delayed
     // or a browser has trouble decoding an animated WebP texture.
     this.load.image('real_explorer', '/assets/realistic-v1/explorer.webp');
